@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">Focus Shield</string>
+    <string name="accessibility_service_description">Focus Shield প্রোডাক্টিভিটি অ্যাপের ব্যাকগ্রাউন্ড সুরক্ষা ও অ্যাপ লক পরিষেবা। এটি সিস্টেম সেটিংস, অ্যাপ আনইনস্টল এবং অনাকাঙ্ক্ষিত বিষয়বস্তু থেকে সুরক্ষিত রাখতে ব্যাকগ্রাউন্ডে সক্রিয় থাকে।</string>
+    <string name="device_admin_label">Focus Shield Device Controller</string>
+    <string name="device_admin_description">Focus Shield এর Uninstall Protection নীতি কার্যকর করার জন্য প্রয়োজনীয় অ্যাডমিন কন্ট্রোলার।</string>
+</resources>

@@ -1,0 +1,8 @@
+{
+  "name": "Focus Shield",
+  "description": "Advanced productivity locker with app/system protection, internet control, and mandatory 12-hour delayed unlocking for unbreakable discipline.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
