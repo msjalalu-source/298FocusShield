@@ -128,6 +128,11 @@ class FocusAccessibilityService : AccessibilityService() {
         return cachedKnownApps.contains(pkg) || CriticalProtectionBootstrap.getKnownApps().contains(pkg)
     }
 
+    fun isAppLocked(pkg: String): Boolean {
+        if (pkg.isBlank() || isOurPackage(pkg)) return false
+        return cachedLockedApps.containsKey(pkg) || CriticalProtectionBootstrap.getLockedApps().containsKey(pkg)
+    }
+
     /**
      * Evaluates whether an unmonitored foreground package is a genuinely newly installed application
      * racing before the system ACTION_PACKAGE_ADDED broadcast has completed.
@@ -544,9 +549,12 @@ class FocusAccessibilityService : AccessibilityService() {
             val isLauncher = isLauncherPackage(packageName)
             val isSystemUi = SystemUiDetector.isSystemUiPackage(packageName)
 
-            // O(1) in-memory check: Immediately block foreground newly installed apps (skip for launchers/SystemUI)
-            if (!isLauncher && !isSystemUi && NewAppBlockStore.isBlocked(packageName)) {
-                performSafeHomeAction(packageName, "New installed app blocked")
+            val isNewBlocked = NewAppBlockStore.isBlocked(packageName)
+            val isManuallyLocked = isAppLocked(packageName)
+
+            // O(1) in-memory check: Immediately block foreground newly installed apps and manually locked apps (skip for launchers/SystemUI)
+            if (!isLauncher && !isSystemUi && (isNewBlocked || isManuallyLocked)) {
+                performSafeHomeAction(packageName, if (isNewBlocked) "New installed app blocked" else "Manually locked app blocked")
                 return
             }
 

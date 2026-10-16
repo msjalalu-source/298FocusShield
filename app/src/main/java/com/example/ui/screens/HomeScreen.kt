@@ -121,6 +121,14 @@ fun HomeScreen(
         viewModel.navigateTo(ScreenDestination.NEW_INSTALL_APP_BLOCK)
     }
 
+    val onManualAppBlockClick = {
+        viewModel.navigateTo(ScreenDestination.MANUAL_APP_BLOCK)
+    }
+
+    val manuallyLockedAppsCount = remember(uiState.apps) {
+        uiState.apps.count { it.isAppLocked }
+    }
+
     val savedTargetsRaw = uiState.settingsMap[AppRepository.KEY_SAVED_PROTECTION_TARGET] ?: ""
     val rememberedTargets: List<SavedProtectionTarget> = remember(savedTargetsRaw) {
         val decoded = RememberProtectionEngine.decodeTargets(savedTargetsRaw)
@@ -198,6 +206,8 @@ fun HomeScreen(
                         newInstallAppBlocked = true,
                         isNewAppUnlockPending = false,
                         onNewInstallAppBlockClick = onNewInstallAppBlockClick,
+                        manuallyLockedAppsCount = manuallyLockedAppsCount,
+                        onManualAppBlockClick = onManualAppBlockClick,
                         onNavigateRemember = onNavigateRemember,
                         onNavigateSearchKeywords = onNavigateSearchKeywords
                     )
@@ -430,6 +440,8 @@ private fun HomeQuickAccessTiles(
     newInstallAppBlocked: Boolean,
     isNewAppUnlockPending: Boolean,
     onNewInstallAppBlockClick: () -> Unit,
+    manuallyLockedAppsCount: Int,
+    onManualAppBlockClick: () -> Unit,
     onNavigateRemember: () -> Unit,
     onNavigateSearchKeywords: () -> Unit
 ) {
@@ -511,6 +523,25 @@ private fun HomeQuickAccessTiles(
                 statusColor = newAppStatusColor,
                 onClick = onNewInstallAppBlockClick,
                 testTag = "tile_new_install_app_block"
+            )
+        }
+
+        // Row 3: 5 -> Manually Block Installed Apps
+        Row(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            val manualStatusText = if (manuallyLockedAppsCount > 0) "$manuallyLockedAppsCount apps locked" else "Select apps"
+            val manualStatusColor = if (manuallyLockedAppsCount > 0) HomeAmberText else TextMuted
+            QuickAccessCard(
+                modifier = Modifier.fillMaxWidth(),
+                icon = Icons.Default.Lock,
+                iconContainer = HomeIndigoContainer,
+                iconTint = HomeIndigoText,
+                title = "Manually Block Installed Apps",
+                statusText = manualStatusText,
+                statusColor = manualStatusColor,
+                onClick = onManualAppBlockClick,
+                testTag = "tile_manual_app_block"
             )
         }
     }

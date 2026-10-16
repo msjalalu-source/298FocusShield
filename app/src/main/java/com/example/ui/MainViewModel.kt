@@ -15,7 +15,8 @@ enum class ScreenDestination {
     TABS,
     REMEMBER_PROTECTION,
     SEARCH_KEYWORDS,
-    NEW_INSTALL_APP_BLOCK
+    NEW_INSTALL_APP_BLOCK,
+    MANUAL_APP_BLOCK
 }
 
 @Immutable
@@ -85,10 +86,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _debouncedSearchQuery
     ) { apps, query ->
         val search = query.trim()
+        val ownPackage = getApplication<Application>().packageName
+        val visible = apps.filter { it.packageName != ownPackage }
         if (search.isEmpty()) {
-            apps
+            visible
         } else {
-            apps.filter {
+            visible.filter {
                 it.appName.contains(search, ignoreCase = true) || it.packageName.contains(search, ignoreCase = true)
             }
         }
@@ -507,6 +510,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }
                 repository.setSetting(AppRepository.KEY_REMEMBER_PROTECTION_ENABLED, "true")
             }
+        }
+    }
+
+    fun setAppLocked(packageName: String, locked: Boolean) {
+        viewModelScope.launch {
+            repository.setAppLocked(packageName, locked)
+        }
+    }
+
+    fun requestUnblockApp(packageName: String) {
+        viewModelScope.launch {
+            repository.requestUnblockApp(packageName)
         }
     }
 }

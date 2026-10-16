@@ -27,6 +27,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.service.BatteryOptimizationHelper
 import com.example.ui.screens.BlockedKeywordsScreen
 import com.example.ui.screens.HomeScreen
+import com.example.ui.screens.ManualAppBlockScreen
 import com.example.ui.screens.NewInstallAppBlockScreen
 import com.example.ui.screens.RememberProtectionScreen
 import com.example.ui.theme.BgDark
@@ -211,6 +212,9 @@ fun MainScreen(
                     }
                     ScreenDestination.NEW_INSTALL_APP_BLOCK -> {
                         NewInstallAppBlockScreen(uiState = uiState, viewModel = viewModel)
+                    }
+                    ScreenDestination.MANUAL_APP_BLOCK -> {
+                        ManualAppBlockScreen(uiState = uiState, viewModel = viewModel)
                     }
                 }
             }

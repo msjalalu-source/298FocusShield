@@ -217,6 +217,24 @@ class AppRepository(private val appDao: AppDao, context: Context) {
 
     fun isAppLockedCached(packageName: String): Boolean = cachedLockedPackages.contains(packageName)
 
+    fun getLauncherVisiblePackages(): Set<String> {
+        val pm = context.packageManager
+        val launcherIntent = Intent(Intent.ACTION_MAIN).apply { addCategory(Intent.CATEGORY_LAUNCHER) }
+        return try {
+            val activities = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                pm.queryIntentActivities(launcherIntent, PackageManager.ResolveInfoFlags.of(0L))
+            } else {
+                @Suppress("DEPRECATION")
+                pm.queryIntentActivities(launcherIntent, 0)
+            }
+            activities.mapNotNull { it.activityInfo?.packageName }
+                .filter { it != context.packageName }
+                .toSet()
+        } catch (_: Exception) {
+            emptySet()
+        }
+    }
+
     @Volatile private var lastInstalledAppsSyncTime = 0L
 
     suspend fun syncInstalledApps(force: Boolean = false) = withContext(Dispatchers.IO) {
@@ -237,19 +255,8 @@ class AppRepository(private val appDao: AppDao, context: Context) {
             emptyList()
         }
 
-        // Single batch query for all launcher activities instead of per-app IPC calls
-        val launchablePackages = try {
-            val launcherIntent = Intent(Intent.ACTION_MAIN).apply { addCategory(Intent.CATEGORY_LAUNCHER) }
-            val activities = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                pm.queryIntentActivities(launcherIntent, PackageManager.ResolveInfoFlags.of(0L))
-            } else {
-                @Suppress("DEPRECATION")
-                pm.queryIntentActivities(launcherIntent, 0)
-            }
-            activities.mapNotNull { it.activityInfo?.packageName }.toSet()
-        } catch (e: Exception) {
-            emptySet()
-        }
+        // Single batch query for all launcher activities using standard PackageManager launcher-intent API
+        val launchablePackages = getLauncherVisiblePackages()
 
         packageSyncMutex.withLock {
             val currentDbApps = appDao.getAllAppsList().associateBy { it.packageName }
@@ -262,11 +269,14 @@ class AppRepository(private val appDao: AppDao, context: Context) {
 
                 val isSystem = (info.flags and ApplicationInfo.FLAG_SYSTEM) != 0 ||
                         (info.flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0
-                val isUserApp = !isSystem
                 val isLaunchable = launchablePackages.contains(info.packageName)
 
-                // Only include user-installed apps or launchable system apps
-                if (!isUserApp && !isLaunchable) {
+                // Only include launcher-visible apps (both user apps and launchable system apps)
+                // Exclude background-only packages without launcher-visible activity
+                if (launchablePackages.isNotEmpty() && !isLaunchable) {
+                    continue
+                }
+                if (launchablePackages.isEmpty() && isSystem) {
                     continue
                 }
 
@@ -485,6 +495,13 @@ class AppRepository(private val appDao: AppDao, context: Context) {
                 // Execute unlock action!
                 when (req.targetType) {
                     "NEW_INSTALL_APP" -> NewAppBlockStore.removeApp(context, req.targetKey)
+                    "APP_LOCK", "LOCKED_APP" -> {
+                        val existing = appDao.getAppByPackage(req.targetKey)
+                        if (existing != null) {
+                            appDao.updateApp(existing.copy(isAppLocked = false))
+                        }
+                        CriticalProtectionBootstrap.removeLockedApp(req.targetKey)
+                    }
                     "NEW_INSTALL_APP_BLOCK" -> setSetting(KEY_NEW_INSTALL_APP_BLOCKED, "false")
                     "CONTROL_CENTER_EDIT_LOCK", "CONTROL_CENTER_EDIT_LOCKED" -> setSetting(KEY_CONTROL_CENTER_EDIT_LOCKED, "false")
                     "UNINSTALL_PROTECTION" -> {
@@ -608,6 +625,59 @@ class AppRepository(private val appDao: AppDao, context: Context) {
     suspend fun unblockNewInstallApp(packageName: String): Unit = withContext(Dispatchers.IO) {
         // Direct unblock bypass strictly closed: enforces standard 12-hour delayed unlock
         requestUnblockNewInstallApp(packageName)
+    }
+
+    suspend fun setAppLocked(packageName: String, locked: Boolean): Unit = withContext(Dispatchers.IO) {
+        if (packageName.isBlank() || packageName == context.packageName) return@withContext
+        packageSyncMutex.withLock {
+            val existing = appDao.getAppByPackage(packageName)
+            val appName = if (existing != null) {
+                val updated = existing.copy(
+                    isAppLocked = locked,
+                    lockedAt = if (locked) System.currentTimeMillis() else existing.lockedAt
+                )
+                appDao.updateApp(updated)
+                existing.appName
+            } else if (locked) {
+                val pm = context.packageManager
+                val (name, isSystem) = try {
+                    val appInfo = pm.getApplicationInfo(packageName, 0)
+                    Pair(pm.getApplicationLabel(appInfo).toString(), (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0)
+                } catch (_: Exception) {
+                    Pair(packageName, false)
+                }
+                val newApp = LockedApp(
+                    packageName = packageName,
+                    appName = name,
+                    isAppLocked = true,
+                    isSystemApp = isSystem,
+                    lockedAt = System.currentTimeMillis()
+                )
+                appDao.insertApp(newApp)
+                name
+            } else {
+                packageName
+            }
+
+            if (locked) {
+                appDao.deleteUnlockRequestsByTargetKeyOrType(packageName, "APP_LOCK")
+                CriticalProtectionBootstrap.addDiscoveredLockedApp(packageName, appName)
+            } else {
+                CriticalProtectionBootstrap.removeLockedApp(packageName)
+            }
+            refreshMemoryCaches()
+        }
+    }
+
+    suspend fun requestUnblockApp(packageName: String): UnlockRequest? = withContext(Dispatchers.IO) {
+        if (packageName.isBlank() || packageName == context.packageName) return@withContext null
+        val pendingRequests = appDao.getPendingUnlockRequests()
+        val existing = pendingRequests.find { (it.targetType == "APP_LOCK" || it.targetType == "LOCKED_APP") && it.targetKey == packageName }
+        if (existing == null) {
+            createUnlockRequest("APP_LOCK", packageName)
+        } else {
+            existing
+        }
     }
 
     // Blocked Search Keywords management
