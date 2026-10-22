@@ -882,34 +882,34 @@ class FocusAccessibilityService : AccessibilityService() {
         }
     }
 
+    private val retryHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val pendingHomeRetry = ConcurrentHashMap.newKeySet<String>()
+
     fun performSafeHomeAction(targetPackage: String, reason: String): Boolean {
         val effectivePackage = if (targetPackage.isNotEmpty()) targetPackage else "unknown"
         val now = SystemClock.elapsedRealtime()
         val previousTime = lastHomeActionTimeMap[effectivePackage] ?: 0L
 
-        // Minimum 1000ms safety cooldown on HOME actions per target package
-        if (previousTime > 0L && now - previousTime < 1000L) {
+        // Short cooldown (250ms). If skipped, schedule one retry so the app cannot stay open.
+        if (previousTime > 0L && now - previousTime < 250L) {
+            if (effectivePackage != "unknown" && pendingHomeRetry.add(effectivePackage)) {
+                retryHandler.postDelayed({
+                    pendingHomeRetry.remove(effectivePackage)
+                    if (currentForegroundPackage == effectivePackage) {
+                        performSafeHomeAction(effectivePackage, "$reason (retry)")
+                    }
+                }, 300L)
+            }
             return false
         }
 
         lastHomeActionTimeMap[effectivePackage] = now
         cleanupStaleHomeActionTimes(now)
 
-        if (com.example.BuildConfig.DEBUG) {
-            Log.d(
-                "FocusAccessibility",
-                "performSafeHomeAction executing: target=$effectivePackage, reason=$reason, prevTimeDelta=${now - previousTime}ms, timestamp=$now"
-            )
-        }
-
         return try {
             performGlobalAction(GLOBAL_ACTION_HOME)
         } catch (t: Throwable) {
-            Log.e(
-                "FocusAccessibility",
-                "performGlobalAction(GLOBAL_ACTION_HOME) failed safely for $effectivePackage ($reason)",
-                t
-            )
+            Log.e("FocusAccessibility", "performGlobalAction(GLOBAL_ACTION_HOME) failed safely for $effectivePackage ($reason)", t)
             false
         }
     }
