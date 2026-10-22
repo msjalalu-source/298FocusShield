@@ -450,7 +450,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun setDelayHours() {
         viewModelScope.launch {
             // Strictly enforce 12 hours standard for delayed unlock
-            repository.setSetting(AppRepository.KEY_UNLOCK_DELAY_HOURS, "12")
+            repository.setSetting(AppRepository.KEY_UNLOCK_DELAY_HOURS, "10")
         }
     }
 

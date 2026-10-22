@@ -58,7 +58,7 @@ fun UninstallProtectionDialog(
                     )
                 } else if (uninstallProtected) {
                     Text(
-                        text = "Focus Shield is actively protected as an Android Device Administrator. The Android OS prevents uninstallation from the launcher, application manager, or Google Play Store while active.\n\nTo disable Uninstall Protection, a standard 12-hour delayed unlock is required.",
+                        text = "Focus Shield is actively protected as an Android Device Administrator. The Android OS prevents uninstallation from the launcher, application manager, or Google Play Store while active.\n\nTo disable Uninstall Protection, a standard 10-hour delayed unlock is required.",
                         fontSize = 13.sp,
                         color = TextSecondary,
                         lineHeight = 18.sp
@@ -90,7 +90,7 @@ fun UninstallProtectionDialog(
                         onDismiss()
                     }
                 ) {
-                    Text("Deactivate (12h Delay)", color = AmberWarning, fontWeight = FontWeight.SemiBold)
+                    Text("Deactivate (10h Delay)", color = AmberWarning, fontWeight = FontWeight.SemiBold)
                 }
             } else {
                 TextButton(

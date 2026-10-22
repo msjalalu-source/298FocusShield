@@ -170,7 +170,7 @@ fun ManualAppBlockScreen(
             title = { Text("Unlock \"$name\"?", fontWeight = FontWeight.Bold, color = TextPrimary) },
             text = {
                 Text(
-                    "Unlocking requires a 12-hour delayed unlock. The app remains blocked until the timer expires.",
+                    "Unlocking requires a 10-hour delayed unlock. The app remains blocked until the timer expires.",
                     fontSize = 13.sp,
                     color = TextSecondary
                 )

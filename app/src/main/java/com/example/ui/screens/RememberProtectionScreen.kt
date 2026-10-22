@@ -101,7 +101,7 @@ fun RememberProtectionScreen(
                             Text(
                                 text = when {
                                     !isRememberEnabled -> "Remember Protection is disabled"
-                                    masterUnlockReq != null -> "Deactivation countdown in progress (12h)"
+                                    masterUnlockReq != null -> "Deactivation countdown in progress (10h)"
                                     else -> "Remember Protection is active"
                                 },
                                 fontSize = 12.sp,

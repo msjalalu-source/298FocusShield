@@ -58,7 +58,7 @@ fun RememberTargetRow(
                 Text("${target.packageName} · ${target.displayEventType}", fontSize = 11.sp, color = TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             if (pendingDeleteReq != null) {
-                InlineUnlockTimer(pendingDeleteReq.unlockAtTime, { onCancelDelete(pendingDeleteReq.id) }, onTimerExpired, "12h")
+                InlineUnlockTimer(pendingDeleteReq.unlockAtTime, { onCancelDelete(pendingDeleteReq.id) }, onTimerExpired, "10h")
             } else {
                 IconButton(onClick = onDeleteClick, modifier = Modifier.size(32.dp).testTag("delete_path_button_${target.id}")) {
                     Icon(Icons.Default.DeleteOutline, "Delete", tint = Color(0xFFEF4444).copy(alpha = 0.85f), modifier = Modifier.size(17.dp))

@@ -150,7 +150,7 @@ fun DeleteTargetDialog(
         },
         confirmButton = {
             Button(onClick = { onConfirm(target) }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)), shape = RoundedCornerShape(8.dp), modifier = Modifier.testTag("confirm_delete_path_button")) {
-                Text("Start 12h Unlock", fontWeight = FontWeight.Bold)
+                Text("Start 10h Unlock", fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {

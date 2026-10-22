@@ -130,7 +130,7 @@ class AppRepository(private val appDao: AppDao, context: Context) {
         // 2. Initialize default app settings and reset legacy default ONs in a single batch
         val defaultsToSet = mutableMapOf<String, String>()
         if (getSetting(KEY_UNLOCK_DELAY_HOURS) == null || getSetting("delay_timer_12h_v1") == null) {
-            defaultsToSet[KEY_UNLOCK_DELAY_HOURS] = "12" // Default 12 hours delayed unlock standard
+            defaultsToSet[KEY_UNLOCK_DELAY_HOURS] = "10" // Default 12 hours delayed unlock standard
             defaultsToSet["delay_timer_12h_v1"] = "true"
         }
         if (getSetting("defaults_reset_v4") == null) {
@@ -1014,7 +1014,7 @@ class AppRepository(private val appDao: AppDao, context: Context) {
             INSTANCE = null
         }
 
-        const val DELAYED_UNLOCK_HOURS = 12
+        const val DELAYED_UNLOCK_HOURS = 10
         const val KEY_UNLOCK_DELAY_HOURS = "unlock_delay_hours"
         const val KEY_CONTROL_CENTER_EDIT_LOCKED = "control_center_edit_locked"
         const val KEY_SEARCH_BLOCKING_YOUTUBE_ENABLED = "search_blocking_youtube_enabled"
