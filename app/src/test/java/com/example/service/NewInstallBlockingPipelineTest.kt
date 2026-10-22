@@ -75,11 +75,11 @@ class NewInstallBlockingPipelineTest {
         assertTrue("Blocked app must be present in getBlockedApps", NewAppBlockStore.getBlockedApps().contains("com.test.newapp"))
     }
 
-    // 2. Feature is permanently enabled -> setFeatureEnabled(false) has no effect and new apps are blocked
+    // 2. PACKAGE_ADDED with feature OFF -> package is not added
     @Test
-    fun test2_packageAdded_featurePermanentlyEnabled_setFeatureEnabledIgnored() {
+    fun test2_packageAdded_featureOff_packageNotAdded() {
         NewAppBlockStore.setFeatureEnabled(context, false)
-        assertTrue("Feature should remain permanently enabled", NewAppBlockStore.isFeatureEnabled(context))
+        assertFalse("Feature should be disabled", NewAppBlockStore.isFeatureEnabled(context))
 
         val intent = Intent(Intent.ACTION_PACKAGE_ADDED).apply {
             data = Uri.parse("package:com.test.alwaysblockedapp")
@@ -87,8 +87,8 @@ class NewInstallBlockingPipelineTest {
         }
         receiver.onReceive(context, intent)
 
-        assertTrue("New app must be blocked because feature is permanently enabled", NewAppBlockStore.isBlocked("com.test.alwaysblockedapp"))
-        assertTrue("App must be in store", NewAppBlockStore.getBlockedApps().contains("com.test.alwaysblockedapp"))
+        assertFalse("New app must not be blocked when feature is disabled", NewAppBlockStore.isBlocked("com.test.alwaysblockedapp"))
+        assertFalse("App must not be in store", NewAppBlockStore.getBlockedApps().contains("com.test.alwaysblockedapp"))
     }
 
     // 3. Focus Guard's own package -> ignored

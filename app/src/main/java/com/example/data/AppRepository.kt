@@ -465,6 +465,11 @@ class AppRepository(private val appDao: AppDao, context: Context) {
             status = "PENDING"
         )
         val generatedId = appDao.insertUnlockRequest(request).toInt()
+        if (targetType == "NEW_INSTALL_APP_BLOCK" || targetKey == KEY_NEW_INSTALL_APP_BLOCKED) {
+            try {
+                fastSnapshotPrefs.edit().putLong("snap_new_install_unlock_at", unlockAt).apply()
+            } catch (_: Exception) {}
+        }
         request.copy(id = generatedId)
     }
 
@@ -502,7 +507,12 @@ class AppRepository(private val appDao: AppDao, context: Context) {
                         }
                         CriticalProtectionBootstrap.removeLockedApp(req.targetKey)
                     }
-                    "NEW_INSTALL_APP_BLOCK" -> setSetting(KEY_NEW_INSTALL_APP_BLOCKED, "false")
+                    "NEW_INSTALL_APP_BLOCK" -> {
+                        try {
+                            fastSnapshotPrefs.edit().remove("snap_new_install_unlock_at").apply()
+                        } catch (_: Exception) {}
+                        setSetting(KEY_NEW_INSTALL_APP_BLOCKED, "false")
+                    }
                     "CONTROL_CENTER_EDIT_LOCK", "CONTROL_CENTER_EDIT_LOCKED" -> setSetting(KEY_CONTROL_CENTER_EDIT_LOCKED, "false")
                     "UNINSTALL_PROTECTION" -> {
                         setSetting(KEY_UNINSTALL_PROTECTION, "false")
@@ -544,6 +554,12 @@ class AppRepository(private val appDao: AppDao, context: Context) {
     }
 
     suspend fun deleteUnlockRequest(id: Int) = withContext(Dispatchers.IO) {
+        val req = appDao.getPendingUnlockRequests().find { it.id == id }
+        if (req?.targetType == "NEW_INSTALL_APP_BLOCK" || req?.targetKey == KEY_NEW_INSTALL_APP_BLOCKED) {
+            try {
+                fastSnapshotPrefs.edit().remove("snap_new_install_unlock_at").apply()
+            } catch (_: Exception) {}
+        }
         appDao.deleteUnlockRequest(id)
     }
 
@@ -1057,7 +1073,7 @@ class AppRepository(private val appDao: AppDao, context: Context) {
                         prefs.getString("setting_$KEY_CONTROL_CENTER_EDIT_LOCKED", "false") == "true"
 
                 val isProtectionEnabled = prefs.getString("setting_$KEY_PROTECTION_ENABLED", "true") != "false"
-                val newInstallAppBlocked = true
+                val newInstallAppBlocked = prefs.getString("setting_$KEY_NEW_INSTALL_APP_BLOCKED", "true") != "false"
 
                 val rawKnown = prefs.getStringSet("snap_known_apps", emptySet()) ?: emptySet()
                 val knownApps = rawKnown.filter { it.isNotBlank() }.toSet()
@@ -1075,7 +1091,7 @@ class AppRepository(private val appDao: AppDao, context: Context) {
                 val minimalSettings = HashMap<String, String>(8).apply {
                     put(KEY_PROTECTION_ENABLED, isProtectionEnabled.toString())
                     put(KEY_CONTROL_CENTER_EDIT_LOCKED, ccEditLocked.toString())
-                    put(KEY_NEW_INSTALL_APP_BLOCKED, "true")
+                    put(KEY_NEW_INSTALL_APP_BLOCKED, newInstallAppBlocked.toString())
                     if (savedTargetsRaw.isNotBlank()) {
                         put(KEY_SAVED_PROTECTION_TARGET, savedTargetsRaw)
                     }

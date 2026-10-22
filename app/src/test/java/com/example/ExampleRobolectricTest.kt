@@ -45,7 +45,7 @@ class ExampleRobolectricTest {
     @Test
     fun testDefaultsInitialization() = runBlocking {
         repository.initializeDefaultsIfEmpty()
-        assertEquals("12", repository.getSetting(AppRepository.KEY_UNLOCK_DELAY_HOURS))
+        assertEquals("10", repository.getSetting(AppRepository.KEY_UNLOCK_DELAY_HOURS))
         assertEquals("false", repository.getSetting(AppRepository.KEY_CONTROL_CENTER_EDIT_LOCKED))
     }
 
@@ -80,10 +80,10 @@ class ExampleRobolectricTest {
         assertTrue(repository.shouldBlockFast(testPkg))
         assertTrue(repository.shouldBlock(testPkg))
 
-        // Direct unblock is strictly prohibited: calling unblockNewInstallApp initiates a 12h delayed unlock request
+        // Direct unblock is strictly prohibited: calling unblockNewInstallApp initiates a 10h delayed unlock request
         repository.unblockNewInstallApp(testPkg)
 
-        // App MUST remain blocked during the 12-hour delayed unlock period
+        // App MUST remain blocked during the 10-hour delayed unlock period
         assertTrue("App must remain blocked while delayed unlock is pending", com.example.service.NewAppBlockStore.isBlocked(testPkg))
         assertTrue(repository.shouldBlockFast(testPkg))
         assertTrue(repository.shouldBlock(testPkg))
@@ -92,30 +92,26 @@ class ExampleRobolectricTest {
         val pendingList = database.appDao().getPendingUnlockRequests()
         val unlockReq = pendingList.find { it.targetType == "NEW_INSTALL_APP" && it.targetKey == testPkg }
         assertNotNull("Delayed unlock request must be created for NEW_INSTALL_APP", unlockReq)
-        assertEquals(12, unlockReq!!.unlockDurationHours)
+        assertEquals(10, unlockReq!!.unlockDurationHours)
 
-        // Simulate 12 hours passing
+        // Simulate 10 hours passing
         database.appDao().updateUnlockRequest(unlockReq.copy(unlockAtTime = System.currentTimeMillis() - 1000))
         repository.checkAndProcessUnlockRequests()
 
-        // After 12-hour delayed unlock completes, app is unblocked
+        // After 10-hour delayed unlock completes, app is unblocked
         assertFalse(com.example.service.NewAppBlockStore.isBlocked(testPkg))
         assertFalse(repository.shouldBlockFast(testPkg))
         assertFalse(repository.shouldBlock(testPkg))
     }
 
     @Test
-    fun testNewInstalledAppsProtection_permanentlyEnabled() = runBlocking {
+    fun testNewInstalledAppsProtection_canBeDisabledViaStore() = runBlocking {
         val appContext = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>()
         com.example.service.NewAppBlockStore.setFeatureEnabled(appContext, false)
+        assertFalse(com.example.service.NewAppBlockStore.isFeatureEnabled(appContext))
+
+        com.example.service.NewAppBlockStore.setFeatureEnabled(appContext, true)
         assertTrue(com.example.service.NewAppBlockStore.isFeatureEnabled(appContext))
-
-        val testPkg = "com.example.regularnewapp"
-        assertFalse(com.example.service.NewAppBlockStore.isBlocked(testPkg))
-        assertFalse(repository.shouldBlock(testPkg))
-
-        com.example.service.NewAppBlockStore.addBlockedApp(appContext, testPkg)
-        assertTrue(com.example.service.NewAppBlockStore.isBlocked(testPkg))
     }
 
     @Test

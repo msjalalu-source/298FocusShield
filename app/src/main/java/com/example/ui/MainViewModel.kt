@@ -396,7 +396,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun toggleNewInstallAppBlocked(currentState: Boolean) {
-        // Master switch removed - Newly Installed App Automatic Block is permanently enabled.
+        toggleFeatureSetting(AppRepository.KEY_NEW_INSTALL_APP_BLOCKED, currentState)
     }
 
     fun toggleBlockedKeyword(id: Long, currentState: Boolean) {

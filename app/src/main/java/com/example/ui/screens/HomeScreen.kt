@@ -101,6 +101,15 @@ fun HomeScreen(
         }
     }
 
+    val isNewInstallAppBlocked = remember(uiState.settingsMap) {
+        uiState.settingsMap[AppRepository.KEY_NEW_INSTALL_APP_BLOCKED] != "false"
+    }
+    val pendingNewAppUnlockReq = remember(uiState.unlockRequests) {
+        uiState.unlockRequests.find {
+            it.targetType == "NEW_INSTALL_APP_BLOCK" || it.targetKey == AppRepository.KEY_NEW_INSTALL_APP_BLOCKED
+        }
+    }
+
     val onUninstallProtectionClick = {
         if (pendingUninstallUnlockReq != null) {
             showUninstallProtectionDialog = true
@@ -203,8 +212,8 @@ fun HomeScreen(
                         uninstallProtected = uninstallProtected,
                         isUninstallUnlockPending = pendingUninstallUnlockReq != null,
                         onUninstallProtectionClick = onUninstallProtectionClick,
-                        newInstallAppBlocked = true,
-                        isNewAppUnlockPending = false,
+                        newInstallAppBlocked = isNewInstallAppBlocked,
+                        isNewAppUnlockPending = pendingNewAppUnlockReq != null,
                         onNewInstallAppBlockClick = onNewInstallAppBlockClick,
                         manuallyLockedAppsCount = manuallyLockedAppsCount,
                         onManualAppBlockClick = onManualAppBlockClick,

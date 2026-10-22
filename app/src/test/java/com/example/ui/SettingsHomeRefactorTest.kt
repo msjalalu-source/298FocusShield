@@ -57,26 +57,26 @@ class SettingsHomeRefactorTest {
         // Initiating unlock request for NEW_INSTALL_APP_BLOCK
         val request = repository.createUnlockRequest("NEW_INSTALL_APP_BLOCK", AppRepository.KEY_NEW_INSTALL_APP_BLOCKED)
 
-        // Verify request created with fixed 12 hours
+        // Verify request created with fixed 10 hours
         assertEquals("NEW_INSTALL_APP_BLOCK", request.targetType)
         assertEquals(AppRepository.KEY_NEW_INSTALL_APP_BLOCKED, request.targetKey)
-        assertEquals(12, request.unlockDurationHours)
+        assertEquals(10, request.unlockDurationHours)
         assertEquals("PENDING", request.status)
 
-        // During the 12-hour period, protection setting MUST remain "true"
+        // During the 10-hour period, protection setting MUST remain "true"
         assertEquals("true", repository.getSetting(AppRepository.KEY_NEW_INSTALL_APP_BLOCKED))
 
-        // Processing before 12 hours elapsed: setting remains "true"
+        // Processing before 10 hours elapsed: setting remains "true"
         repository.checkAndProcessUnlockRequests()
         assertEquals("true", repository.getSetting(AppRepository.KEY_NEW_INSTALL_APP_BLOCKED))
 
-        // Fast forward 12 hours: set unlockAtTime to in the past
+        // Fast forward 10 hours: set unlockAtTime to in the past
         database.appDao().updateUnlockRequest(request.copy(unlockAtTime = System.currentTimeMillis() - 1000))
 
         // Process expired unlock requests
         repository.checkAndProcessUnlockRequests()
 
-        // After 12 hours expire, setting becomes "false"
+        // After 10 hours expire, setting becomes "false"
         assertEquals("false", repository.getSetting(AppRepository.KEY_NEW_INSTALL_APP_BLOCKED))
     }
 
@@ -95,9 +95,9 @@ class SettingsHomeRefactorTest {
             repository.setSetting(key, "true")
             assertEquals("true", repository.getSetting(key))
 
-            // 2. Request 12-hour unlock
+            // 2. Request 10-hour unlock
             val req = repository.createUnlockRequest(targetType, key)
-            assertEquals("Unlock duration must be 12 hours for $targetType", 12, req.unlockDurationHours)
+            assertEquals("Unlock duration must be 10 hours for $targetType", 10, req.unlockDurationHours)
             assertEquals("PENDING", req.status)
 
             // 3. Verify feature is still enabled during countdown
@@ -121,7 +121,7 @@ class SettingsHomeRefactorTest {
 
         assertEquals("REMEMBER_TARGET_DELETE", req.targetType)
         assertEquals(targetId, req.targetKey)
-        assertEquals(12, req.unlockDurationHours)
+        assertEquals(10, req.unlockDurationHours)
         assertEquals("PENDING", req.status)
     }
 
@@ -136,9 +136,9 @@ class SettingsHomeRefactorTest {
         repository.setSetting(AppRepository.KEY_SEARCH_BLOCKING_YOUTUBE_ENABLED, "true")
         assertEquals("true", repository.getSetting(AppRepository.KEY_SEARCH_BLOCKING_YOUTUBE_ENABLED))
 
-        // Disabling YouTube requires 12-hour delayed unlock
+        // Disabling YouTube requires 10-hour delayed unlock
         val ytUnlock = repository.createUnlockRequest("SEARCH_BLOCKING_YOUTUBE", AppRepository.KEY_SEARCH_BLOCKING_YOUTUBE_ENABLED)
-        assertEquals(12, ytUnlock.unlockDurationHours)
+        assertEquals(10, ytUnlock.unlockDurationHours)
         assertEquals("true", repository.getSetting(AppRepository.KEY_SEARCH_BLOCKING_YOUTUBE_ENABLED))
 
         // Timer completes for YouTube

@@ -77,10 +77,20 @@ object NewAppBlockStore {
                     }
                 }
                 updateFlow()
-                isFeatureEnabledCache = true
+                val settingVal = prefs.getString("setting_${AppRepository.KEY_NEW_INSTALL_APP_BLOCKED}", "true")
+                val unlockAt = prefs.getLong("snap_new_install_unlock_at", 0L)
+                if (unlockAt > 0L && System.currentTimeMillis() >= unlockAt) {
+                    isFeatureEnabledCache = false
+                    prefs.edit()
+                        .putString("setting_${AppRepository.KEY_NEW_INSTALL_APP_BLOCKED}", "false")
+                        .remove("snap_new_install_unlock_at")
+                        .apply()
+                } else {
+                    isFeatureEnabledCache = settingVal != "false"
+                }
                 isInitialized = true
                 isTestingSimulation = false
-                Log.d(TAG, "Initialized with ${inMemoryBlockedApps.size} blocked new apps (permanently enabled)")
+                Log.d(TAG, "Initialized with ${inMemoryBlockedApps.size} blocked new apps (enabled: $isFeatureEnabledCache)")
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to initialize NewAppBlockStore", e)
             }
@@ -95,26 +105,47 @@ object NewAppBlockStore {
 
     /**
      * Check whether the "New Installed Apps" protection feature is enabled.
-     * Newly Installed App Automatic Block is permanently enabled.
      */
-    fun isFeatureEnabled(): Boolean = true
+    fun isFeatureEnabled(): Boolean = isFeatureEnabledCache
 
-    fun isFeatureEnabled(context: Context): Boolean = true
+    fun isFeatureEnabled(context: Context): Boolean {
+        if (!isInitialized && !isTestingSimulation) {
+            init(context)
+        }
+        val prefs = getPrefs(context)
+        val unlockAt = prefs.getLong("snap_new_install_unlock_at", 0L)
+        if (unlockAt > 0L && System.currentTimeMillis() >= unlockAt) {
+            isFeatureEnabledCache = false
+            prefs.edit()
+                .putString("setting_${AppRepository.KEY_NEW_INSTALL_APP_BLOCKED}", "false")
+                .remove("snap_new_install_unlock_at")
+                .apply()
+        }
+        return isFeatureEnabledCache
+    }
 
     /**
      * Set feature enabled/disabled state.
-     * Retained as no-op for backward compatibility because feature is permanently enabled.
      */
     fun setFeatureEnabled(context: Context, enabled: Boolean) {
-        isFeatureEnabledCache = true
-        Log.i("NewInstallDebug", "NewAppBlockStore is permanently enabled; setFeatureEnabled($enabled) ignored.")
+        isFeatureEnabledCache = enabled
+        try {
+            val prefs = getPrefs(context)
+            val editor = prefs.edit().putString("setting_${AppRepository.KEY_NEW_INSTALL_APP_BLOCKED}", enabled.toString())
+            if (enabled) {
+                editor.remove("snap_new_install_unlock_at")
+            }
+            editor.apply()
+        } catch (_: Exception) {}
+        Log.i("NewInstallDebug", "NewAppBlockStore setFeatureEnabled: $enabled")
     }
 
     fun enableFeature(context: Context) {
-        isFeatureEnabledCache = true
+        setFeatureEnabled(context, true)
     }
+
     fun disableFeature(context: Context) {
-        // Permanently enabled. No-op.
+        setFeatureEnabled(context, false)
     }
 
     /**
@@ -275,7 +306,6 @@ object NewAppBlockStore {
         updateFlow()
         isInitialized = false
         isTestingSimulation = true
-        isFeatureEnabledCache = true
     }
 
     private fun persistAsync(context: Context) {

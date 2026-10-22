@@ -200,7 +200,7 @@ class ManualAppBlockTest {
         assertNotNull(unlockReq)
         assertEquals("APP_LOCK", unlockReq!!.targetType)
         assertEquals(targetPkg, unlockReq.targetKey)
-        assertEquals(12, unlockReq.unlockDurationHours)
+        assertEquals(10, unlockReq.unlockDurationHours)
         assertEquals("PENDING", unlockReq.status)
 
         // During 12-hour countdown, the app MUST remain locked

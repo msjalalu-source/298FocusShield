@@ -25,11 +25,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
+import androidx.compose.material.icons.filled.InstallMobile
+import com.example.data.AppRepository
 import com.example.data.UnlockRequest
 import com.example.ui.InlineUnlockTimer
 import com.example.ui.MainUiState
 import com.example.ui.MainViewModel
+import com.example.ui.components.StandardCardSurface
 import com.example.ui.components.SubScreenTopBar
+import com.example.ui.components.standardSwitchColors
 import com.example.ui.theme.*
 
 @Composable
@@ -38,6 +42,12 @@ fun NewInstallAppBlockScreen(
     viewModel: MainViewModel
 ) {
     val context = LocalContext.current
+    val isNewInstallAppBlocked = uiState.settingsMap[AppRepository.KEY_NEW_INSTALL_APP_BLOCKED] != "false"
+    val pendingFeatureUnlockReq = remember(uiState.unlockRequests) {
+        uiState.unlockRequests.find {
+            it.targetType == "NEW_INSTALL_APP_BLOCK" || it.targetKey == AppRepository.KEY_NEW_INSTALL_APP_BLOCKED
+        }
+    }
     val appUnlockRequestMap = remember(uiState.unlockRequests) {
         uiState.unlockRequests.filter { it.targetType == "NEW_INSTALL_APP" }.associateBy { it.targetKey }
     }
@@ -54,9 +64,52 @@ fun NewInstallAppBlockScreen(
                 title = "Newly Installed Apps",
                 onBack = { viewModel.navigateBack() },
                 backTestTag = "back_button_new_install_app_block",
-                subtitle = "Protection Active",
-                subtitleColor = CyanAccent
+                subtitle = if (isNewInstallAppBlocked) "Protection Active" else "Protection Inactive",
+                subtitleColor = if (isNewInstallAppBlocked) CyanAccent else TextMuted
             )
+        }
+
+        item(key = "new_install_master_card") {
+            StandardCardSurface(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.fillMaxWidth().padding(14.dp)) {
+                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.InstallMobile,
+                            contentDescription = null,
+                            tint = if (isNewInstallAppBlocked) CyanAccent else TextSecondary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Automatic App Blocking", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                            Text(
+                                text = when {
+                                    !isNewInstallAppBlocked -> "Automatic blocking is disabled"
+                                    pendingFeatureUnlockReq != null -> "Deactivation countdown in progress (10h)"
+                                    else -> "Automatically locks newly installed apps"
+                                },
+                                fontSize = 12.sp,
+                                color = TextSecondary
+                            )
+                        }
+                        Switch(
+                            checked = isNewInstallAppBlocked,
+                            onCheckedChange = { viewModel.toggleNewInstallAppBlocked(isNewInstallAppBlocked) },
+                            colors = standardSwitchColors(),
+                            modifier = Modifier.testTag("toggle_new_install_app_block")
+                        )
+                    }
+
+                    if (pendingFeatureUnlockReq != null) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        InlineUnlockTimer(
+                            unlockAtTime = pendingFeatureUnlockReq.unlockAtTime,
+                            onCancel = { viewModel.cancelUnlockRequest(pendingFeatureUnlockReq.id) },
+                            onTimerExpired = { viewModel.checkAndProcessUnlockRequests() }
+                        )
+                    }
+                }
+            }
         }
 
         if (blockedPackages.isEmpty()) {
@@ -90,14 +143,14 @@ fun NewInstallAppBlockScreen(
         AlertDialog(
             onDismissRequest = { appToUnblock = null },
             title = { Text("Unblock \"$name\"?", fontWeight = FontWeight.Bold, color = TextPrimary) },
-            text = { Text("Unblocking requires a 12-hour delayed unlock. The app remains blocked until the timer expires.", fontSize = 13.sp, color = TextSecondary) },
+            text = { Text("Unblocking requires a 10-hour delayed unlock. The app remains blocked until the timer expires.", fontSize = 13.sp, color = TextSecondary) },
             confirmButton = {
                 Button(
                     onClick = { viewModel.requestUnblockNewInstallApp(pkg); appToUnblock = null },
                     colors = ButtonDefaults.buttonColors(containerColor = AmberWarning),
                     shape = RoundedCornerShape(8.dp),
                     modifier = Modifier.testTag("confirm_unblock_app_btn")
-                ) { Text("Start 12h Delay", color = Color.Black, fontWeight = FontWeight.Bold) }
+                ) { Text("Start 10h Delay", color = Color.Black, fontWeight = FontWeight.Bold) }
             },
             dismissButton = {
                 TextButton(onClick = { appToUnblock = null }) { Text("Cancel", color = TextSecondary) }
