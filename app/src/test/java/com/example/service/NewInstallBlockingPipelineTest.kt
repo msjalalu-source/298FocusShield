@@ -525,62 +525,11 @@ class NewInstallBlockingPipelineTest {
         assertTrue(NewAppBlockStore.isBlocked(pkg))
     }
 
-    // 24. Muslim Browser Pro permanent exemption from New Install Protection
-    @Test
-    fun test24_muslimBrowserPro_permanentlyExemptFromNewInstallProtection() {
-        NewAppBlockStore.setFeatureEnabled(context, true)
-        val exemptPkg = "com.muslim.browser.pro"
-
-        assertTrue("Package must be recognized as exempt", NewAppBlockStore.isExemptPackage(exemptPkg))
-
-        // 1. ACTION_PACKAGE_ADDED broadcast
-        val intent = Intent(Intent.ACTION_PACKAGE_ADDED).apply {
-            data = Uri.parse("package:$exemptPkg")
-            putExtra(Intent.EXTRA_REPLACING, false)
-        }
-        receiver.onReceive(context, intent)
-
-        assertFalse("Muslim Browser Pro must NOT be blocked", NewAppBlockStore.isBlocked(exemptPkg))
-        assertFalse("Muslim Browser Pro must not be in blocked set", NewAppBlockStore.getBlockedApps().contains(exemptPkg))
-
-        // 2. Direct addBlockedApp attempt must fail
-        assertFalse("addBlockedApp must return false for exempt package", NewAppBlockStore.addBlockedApp(context, exemptPkg))
-        assertFalse("Must remain unblocked after addBlockedApp attempt", NewAppBlockStore.isBlocked(exemptPkg))
-
-        // 3. Direct addBlockedAppDirect attempt must not add it
-        NewAppBlockStore.addBlockedAppDirect(exemptPkg)
-        assertFalse("addBlockedAppDirect must not add exempt package", NewAppBlockStore.isBlocked(exemptPkg))
-
-        // 4. Raced foreground launch before/during install must not trigger Home action or block
-        accessibilityService.cachedKnownApps = setOf("com.preinstalled.calculator")
-        val event = AccessibilityEvent.obtain(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED).apply {
-            packageName = exemptPkg
-            className = "$exemptPkg.MainActivity"
-        }
-        try {
-            accessibilityService.onAccessibilityEvent(event)
-            assertEquals("Muslim Browser Pro foreground launch must not trigger safe home action", 0L, accessibilityService.getLastHomeActionTime(exemptPkg))
-            assertFalse("Muslim Browser Pro must not be marked blocked by accessibility service", NewAppBlockStore.isBlocked(exemptPkg))
-        } finally {
-            event.recycle()
-        }
-
-        // 5. Reinstall scenario: subsequent installation must also remain exempt
-        val reinstallIntent = Intent(Intent.ACTION_PACKAGE_ADDED).apply {
-            data = Uri.parse("package:$exemptPkg")
-            putExtra(Intent.EXTRA_REPLACING, false)
-        }
-        receiver.onReceive(context, reinstallIntent)
-        assertFalse("Muslim Browser Pro must remain unblocked on reinstall", NewAppBlockStore.isBlocked(exemptPkg))
-    }
-
     // 25. Different new app follows the normal blocking path
     @Test
     fun test25_differentNewApp_followsNormalBlockingPath() {
         NewAppBlockStore.setFeatureEnabled(context, true)
         val regularPkg = "com.normal.otherapp"
-
-        assertFalse("Regular package must not be recognized as exempt", NewAppBlockStore.isExemptPackage(regularPkg))
 
         val intent = Intent(Intent.ACTION_PACKAGE_ADDED).apply {
             data = Uri.parse("package:$regularPkg")

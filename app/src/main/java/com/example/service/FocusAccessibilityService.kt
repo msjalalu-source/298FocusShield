@@ -142,7 +142,7 @@ class FocusAccessibilityService : AccessibilityService() {
      * Prevents false-positive blocks on existing unblocked applications.
      */
     private fun isGenuinelyNewInstalledApp(packageName: String): Boolean {
-        if (packageName.isBlank() || packageName == this.packageName || NewAppBlockStore.isExemptPackage(packageName)) return false
+        if (packageName.isBlank() || packageName == this.packageName) return false
         if (isSystemCorePackage(packageName)) return false
         if (isAppKnown(packageName)) return false
 

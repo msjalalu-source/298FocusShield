@@ -91,7 +91,7 @@ class PackageReceiver : BroadcastReceiver() {
 
         when (action) {
             Intent.ACTION_PACKAGE_ADDED -> {
-                if (!isReplacing && !NewAppBlockStore.isExemptPackage(packageName) && isFeatureOn) {
+                if (!isReplacing && isFeatureOn) {
                     NewAppBlockStore.addBlockedApp(context, packageName)
                 }
             }
@@ -112,7 +112,7 @@ class PackageReceiver : BroadcastReceiver() {
 
                 when (action) {
                     Intent.ACTION_PACKAGE_ADDED -> {
-                        if (!isReplacing && !NewAppBlockStore.isExemptPackage(packageName)) {
+                        if (!isReplacing) {
                             repository.handleNewlyInstalledPackage(packageName)
                         }
                     }

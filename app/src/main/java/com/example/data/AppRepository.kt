@@ -341,7 +341,7 @@ class AppRepository(private val appDao: AppDao, context: Context) {
         packageName: String,
         forceAutoLock: Boolean = false
     ): LockedApp? = withContext(Dispatchers.IO) {
-        if (packageName.isBlank() || packageName == context.packageName || NewAppBlockStore.isExemptPackage(packageName)) return@withContext null
+        if (packageName.isBlank() || packageName == context.packageName) return@withContext null
         if (TemporaryUnlockManager.isSettingsPackage(packageName)) return@withContext null
 
         val pm = context.packageManager

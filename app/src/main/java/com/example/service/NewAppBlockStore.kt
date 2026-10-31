@@ -26,9 +26,6 @@ object NewAppBlockStore {
     private const val TAG = "NewAppBlockStore"
     const val PREFS_KEY_BLOCKED_NEW_APPS = "snap_new_install_blocked"
     const val PREF_FEATURE_ENABLED = AppRepository.KEY_NEW_INSTALL_APP_BLOCKED
-    const val EXEMPT_PACKAGE = "com.muslim.browser.pro"
-
-    fun isExemptPackage(packageName: String?): Boolean = packageName == EXEMPT_PACKAGE
 
     // Thread-safe in-memory cache for ultra-fast foreground lookup in AccessibilityService hot path
     private val inMemoryBlockedApps = ConcurrentHashMap.newKeySet<String>()
@@ -152,7 +149,7 @@ object NewAppBlockStore {
     fun isBlocked(packageName: String?): Boolean = isBlocked(packageName, null)
 
     fun isBlocked(packageName: String?, fallbackContext: Context? = null): Boolean {
-        if (packageName.isNullOrEmpty() || isExemptPackage(packageName)) return false
+        if (packageName.isNullOrEmpty()) return false
         if (!isInitialized && !isTestingSimulation) {
             val ctx = fallbackContext?.applicationContext ?: appContext
             if (ctx != null) {
@@ -192,7 +189,7 @@ object NewAppBlockStore {
      * Idempotent: returns false if already blocked, avoiding duplicate persistence or notifications.
      */
     fun addBlockedApp(context: Context, packageName: String): Boolean {
-        if (packageName.isEmpty() || packageName == context.packageName || isExemptPackage(packageName)) return false
+        if (packageName.isEmpty() || packageName == context.packageName) return false
         ensureInitialized(context)
 
         // Fast path: skip known core system packages immediately without IPC
@@ -228,7 +225,7 @@ object NewAppBlockStore {
      * Internal direct addition for in-memory synchronization without duplicate disk writes.
      */
     internal fun addBlockedAppDirect(packageName: String) {
-        if (packageName.isNotEmpty() && !isExemptPackage(packageName)) {
+        if (packageName.isNotEmpty()) {
             inMemoryBlockedApps.add(packageName)
             isFeatureEnabledCache = true
             updateFlow()
