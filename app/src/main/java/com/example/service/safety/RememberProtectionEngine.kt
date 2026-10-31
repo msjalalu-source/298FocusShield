@@ -118,38 +118,53 @@ object RememberProtectionEngine {
     @Volatile
     private var explicitEnabledOverride: Boolean? = null
 
+    @Volatile private var cachedActiveState: Boolean? = null
+
+    /**
+     * Refreshes the cached active state when settings change.
+     */
+    fun refreshActiveState(settingValue: String?) {
+        cachedActiveState = settingValue?.equals("true", ignoreCase = true) ?: true
+    }
+
     /**
      * Checks whether Remember Protection Master Switch is enabled.
      * Defaults to true (ON). Returns false when temporarily disabled via Master Switch.
+     * Caches the result in-memory so events do not re-read settings on every click.
      */
     fun isRememberProtectionActive(context: Context? = null, repository: AppRepository? = null): Boolean {
         explicitEnabledOverride?.let { return it }
+        cachedActiveState?.let { return it }
 
-        if (context != null) {
-            val repo = repository ?: try {
-                AppRepository.getInstance(context)
-            } catch (_: Exception) {
-                null
-            }
-            val setting = repo?.getSettingDirect(AppRepository.KEY_REMEMBER_PROTECTION_ENABLED)
-                ?: CriticalProtectionBootstrap.getSetting(AppRepository.KEY_REMEMBER_PROTECTION_ENABLED)
-                ?: try {
-                    AppRepository.getDeviceProtectedPrefs(context)
-                        .getString("setting_${AppRepository.KEY_REMEMBER_PROTECTION_ENABLED}", null)
+        val active = run {
+            if (context != null) {
+                val repo = repository ?: try {
+                    AppRepository.getInstance(context)
                 } catch (_: Exception) {
                     null
                 }
-            if (setting != null) {
-                return setting.equals("true", ignoreCase = true)
+                val setting = repo?.getSettingDirect(AppRepository.KEY_REMEMBER_PROTECTION_ENABLED)
+                    ?: CriticalProtectionBootstrap.getSetting(AppRepository.KEY_REMEMBER_PROTECTION_ENABLED)
+                    ?: try {
+                        AppRepository.getDeviceProtectedPrefs(context)
+                            .getString("setting_${AppRepository.KEY_REMEMBER_PROTECTION_ENABLED}", null)
+                    } catch (_: Exception) {
+                        null
+                    }
+                if (setting != null) {
+                    return@run setting.equals("true", ignoreCase = true)
+                }
             }
-        }
 
-        val bootstrapSetting = CriticalProtectionBootstrap.getSetting(AppRepository.KEY_REMEMBER_PROTECTION_ENABLED)
-        if (bootstrapSetting != null) {
-            return bootstrapSetting.equals("true", ignoreCase = true)
-        }
+            val bootstrapSetting = CriticalProtectionBootstrap.getSetting(AppRepository.KEY_REMEMBER_PROTECTION_ENABLED)
+            if (bootstrapSetting != null) {
+                return@run bootstrapSetting.equals("true", ignoreCase = true)
+            }
 
-        return true
+            true
+        }
+        cachedActiveState = active
+        return active
     }
 
     /**
@@ -157,6 +172,7 @@ object RememberProtectionEngine {
      */
     fun setEnabled(enabled: Boolean) {
         explicitEnabledOverride = enabled
+        cachedActiveState = enabled
         CriticalProtectionBootstrap.updateSetting(AppRepository.KEY_REMEMBER_PROTECTION_ENABLED, enabled.toString())
     }
 
@@ -567,6 +583,7 @@ object RememberProtectionEngine {
     @androidx.annotation.VisibleForTesting
     fun resetForTesting(context: Context? = null) {
         explicitEnabledOverride = null
+        cachedActiveState = null
         updateCachedTargets(emptyList())
         eventTypeParseCache.clear()
         CriticalProtectionBootstrap.updateSetting(AppRepository.KEY_SAVED_PROTECTION_TARGET, "")

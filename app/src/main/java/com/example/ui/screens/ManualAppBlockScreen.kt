@@ -24,10 +24,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.R
 import androidx.core.graphics.drawable.toBitmap
 import com.example.data.LockedApp
 import com.example.data.UnlockRequest
@@ -95,7 +97,7 @@ fun ManualAppBlockScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag("input_search_installed_apps"),
-                placeholder = { Text("Search installed apps...", color = TextMuted, fontSize = 13.sp) },
+                placeholder = { Text(stringResource(R.string.hint_search_installed_apps), color = TextMuted, fontSize = 13.sp) },
                 leadingIcon = {
                     Icon(Icons.Default.Search, contentDescription = "Search", tint = TextMuted, modifier = Modifier.size(20.dp))
                 },
@@ -185,12 +187,12 @@ fun ManualAppBlockScreen(
                     shape = RoundedCornerShape(8.dp),
                     modifier = Modifier.testTag("confirm_unlock_app_btn")
                 ) {
-                    Text("Start 12h Delay", color = Color.Black, fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.btn_start_12h_delay), color = Color.Black, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { appToUnlock = null }) {
-                    Text("Cancel", color = TextSecondary)
+                    Text(stringResource(R.string.btn_cancel), color = TextSecondary)
                 }
             },
             containerColor = CardDark,
@@ -304,7 +306,7 @@ private fun ManualAppItem(
                     ) {
                         Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(14.dp))
                         Spacer(Modifier.width(4.dp))
-                        Text("Locked", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.status_locked), fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
                 } else {
                     Button(
@@ -319,7 +321,7 @@ private fun ManualAppItem(
                     ) {
                         Icon(Icons.Default.LockOpen, contentDescription = null, modifier = Modifier.size(14.dp))
                         Spacer(Modifier.width(4.dp))
-                        Text("Lock", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        Text(stringResource(R.string.btn_lock), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                     }
                 }
             }

@@ -1,12 +1,15 @@
 package com.example.service.systemui
 
 import android.os.Build
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Utility for recognizing system UI packages.
  * Quick Toggle Edit Block feature has been completely removed.
  */
 object SystemUiDetector {
+
+    private val systemUiPackageCache = ConcurrentHashMap<String, Boolean>()
 
     private const val SYSTEMUI_PACKAGE = "com.android.systemui"
     private const val MIUI_SYSTEMUI_PLUGIN_PACKAGE = "com.android.systemui.plugin"
@@ -37,7 +40,7 @@ object SystemUiDetector {
     }
 
     fun resetStateForTesting() {
-        // No state needed
+        systemUiPackageCache.clear()
     }
 
     /**
@@ -47,17 +50,23 @@ object SystemUiDetector {
         if (pkg.isNullOrBlank()) return false
 
         val pkgStr = if (pkg is String) pkg else pkg.toString()
+        val cached = systemUiPackageCache[pkgStr]
+        if (cached != null) return cached
 
-        // Fast path: Exact match against pre-compiled HashSet (Zero allocation)
-        if (SYSTEMUI_PACKAGES.contains(pkgStr)) return true
-        if (isSamsung && pkgStr == SEC_SYSTEMUI_PACKAGE) return true
+        val result = run {
+            // Fast path: Exact match against pre-compiled HashSet (Zero allocation)
+            if (SYSTEMUI_PACKAGES.contains(pkgStr)) return@run true
+            if (isSamsung && pkgStr == SEC_SYSTEMUI_PACKAGE) return@run true
 
-        // Fast check: Contains "systemui" without allocating lowercase string
-        if (pkgStr.contains("systemui", ignoreCase = true)) return true
+            // Fast check: Contains "systemui" without allocating lowercase string
+            if (pkgStr.contains("systemui", ignoreCase = true)) return@run true
 
-        // Fallback: Case-insensitive match for OEM packages (e.g. if mixed-case is sent)
-        val lower = pkgStr.lowercase()
-        return SYSTEMUI_PACKAGES.contains(lower) ||
-                (isSamsung && lower == SEC_SYSTEMUI_PACKAGE)
+            // Fallback: Case-insensitive match for OEM packages (e.g. if mixed-case is sent)
+            val lower = pkgStr.lowercase()
+            SYSTEMUI_PACKAGES.contains(lower) ||
+                    (isSamsung && lower == SEC_SYSTEMUI_PACKAGE)
+        }
+        systemUiPackageCache[pkgStr] = result
+        return result
     }
 }

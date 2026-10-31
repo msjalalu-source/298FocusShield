@@ -10,6 +10,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
+import com.example.R
 import com.example.data.UnlockRequest
 import com.example.ui.InlineUnlockTimer
 import com.example.ui.theme.*
@@ -81,7 +83,7 @@ fun UninstallProtectionDialog(
                         onDismiss()
                     }
                 ) {
-                    Text("Cancel Deactivation", color = EmeraldGreenLight, fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.btn_cancel_deactivation), color = EmeraldGreenLight, fontWeight = FontWeight.SemiBold)
                 }
             } else if (uninstallProtected) {
                 TextButton(
@@ -90,7 +92,7 @@ fun UninstallProtectionDialog(
                         onDismiss()
                     }
                 ) {
-                    Text("Deactivate (10h Delay)", color = AmberWarning, fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.btn_deactivate_delay), color = AmberWarning, fontWeight = FontWeight.SemiBold)
                 }
             } else {
                 TextButton(
@@ -99,13 +101,13 @@ fun UninstallProtectionDialog(
                         onDismiss()
                     }
                 ) {
-                    Text("Enable", color = EmeraldGreenLight, fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.btn_enable), color = EmeraldGreenLight, fontWeight = FontWeight.SemiBold)
                 }
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Close", color = TextSecondary)
+                Text(stringResource(R.string.btn_close), color = TextSecondary)
             }
         },
         containerColor = CardDark,

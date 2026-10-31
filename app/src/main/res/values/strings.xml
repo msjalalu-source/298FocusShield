@@ -3,4 +3,43 @@
     <string name="accessibility_service_description">Focus Shield প্রোডাক্টিভিটি অ্যাপের ব্যাকগ্রাউন্ড সুরক্ষা ও অ্যাপ লক পরিষেবা। এটি সিস্টেম সেটিংস, অ্যাপ আনইনস্টল এবং অনাকাঙ্ক্ষিত বিষয়বস্তু থেকে সুরক্ষিত রাখতে ব্যাকগ্রাউন্ডে সক্রিয় থাকে।</string>
     <string name="device_admin_label">Focus Shield Device Controller</string>
     <string name="device_admin_description">Focus Shield এর Uninstall Protection নীতি কার্যকর করার জন্য প্রয়োজনীয় অ্যাডমিন কন্ট্রোলার।</string>
+
+    <!-- UI Strings for Task 5a -->
+    <string name="btn_cancel_deactivation">Cancel Deactivation</string>
+    <string name="btn_deactivate_delay">Deactivate (10h Delay)</string>
+    <string name="btn_enable">Enable</string>
+    <string name="btn_close">Close</string>
+
+    <string name="title_target_applications">Target Applications</string>
+    <string name="btn_add">Add</string>
+    <string name="title_add_blocked_keyword">Add Blocked Keyword</string>
+    <string name="hint_keyword_example">e.g. gaming, vlogs</string>
+    <string name="label_matching_mode">Matching Mode:</string>
+    <string name="btn_save">Save</string>
+    <string name="btn_cancel">Cancel</string>
+
+    <string name="hint_search_installed_apps">Search installed apps…</string>
+    <string name="btn_start_12h_delay">Start 12h Delay</string>
+    <string name="status_locked">Locked</string>
+    <string name="btn_lock">Lock</string>
+
+    <string name="title_automatic_app_blocking">Automatic App Blocking</string>
+    <string name="msg_no_blocked_apps">No Blocked Apps</string>
+    <string name="msg_newly_installed_apps_info">Newly installed apps will automatically be locked and listed here.</string>
+    <string name="msg_unblocking_requires_10h_delay">Unblocking requires a 10-hour delayed unlock. The app remains blocked until the timer expires.</string>
+    <string name="btn_start_10h_delay">Start 10h Delay</string>
+    <string name="btn_unblock">Unblock</string>
+
+    <string name="label_navigation_path_required">Navigation Path *</string>
+    <string name="hint_navigation_path_example">e.g. Set up portable hotspot</string>
+    <string name="label_custom_package_name_required">Custom Package Name *</string>
+    <string name="title_delete_target_12h_unlock">Delete Target (12h Unlock)</string>
+    <string name="msg_delete_target_timer_info">A 12-hour timer will begin. You can cancel deletion anytime before it expires.</string>
+    <string name="btn_start_10h_unlock">Start 10h Unlock</string>
+    <string name="btn_delete_12h_unlock">Delete (12h Unlock)</string>
+
+    <string name="title_remember_protection">Remember Protection</string>
+    <string name="label_saved_configurations">Saved configurations</string>
+    <string name="msg_no_saved_configurations">No saved configuration yet</string>
+    <string name="btn_add_target">Add Target</string>
 </resources>

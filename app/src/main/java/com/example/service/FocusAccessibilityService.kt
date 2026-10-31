@@ -52,14 +52,18 @@ class FocusAccessibilityService : AccessibilityService() {
     @Volatile private var lastForegroundChangeTime = 0L
     @Volatile private var lastEnforcedPackage: String = ""
     @Volatile private var lastEnforcementTime = 0L
+    @Volatile private var isHeavyMonitoringActive: Boolean? = null
     private val lastHomeActionTimeMap = ConcurrentHashMap<String, Long>()
     private val totalEventsCount = java.util.concurrent.atomic.AtomicLong(0L)
+
+    private val imePackageCache = ConcurrentHashMap<String, Boolean>()
+    private val ephemeralSystemPackageCache = ConcurrentHashMap<String, Boolean>()
+    private val launcherPackageCache = ConcurrentHashMap<String, Boolean>()
 
     companion object {
         private const val RELEVANT_EVENTS_MASK =
             AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED or
             AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED or
-            AccessibilityEvent.TYPE_WINDOWS_CHANGED or
             AccessibilityEvent.TYPE_VIEW_CLICKED or
             AccessibilityEvent.TYPE_VIEW_LONG_CLICKED or
             AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED or
@@ -217,6 +221,10 @@ class FocusAccessibilityService : AccessibilityService() {
     @androidx.annotation.VisibleForTesting
     internal fun setCachedSettingsForTesting(map: Map<String, String>) {
         cachedSettings = map
+        val remSetting = map[AppRepository.KEY_REMEMBER_PROTECTION_ENABLED]
+        if (remSetting != null) {
+            com.example.service.safety.RememberProtectionEngine.refreshActiveState(remSetting)
+        }
     }
 
     @androidx.annotation.VisibleForTesting
@@ -353,30 +361,51 @@ class FocusAccessibilityService : AccessibilityService() {
             StartupTiming.recordHandlersReady()
         }
 
-        // Configure AccessibilityServiceInfo
-        val currentInfo = this.serviceInfo
-        val info = currentInfo ?: AccessibilityServiceInfo()
-        info.eventTypes = (currentInfo?.eventTypes ?: 0) or
-                AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED or
-                AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED or
-                AccessibilityEvent.TYPE_WINDOWS_CHANGED or
-                AccessibilityEvent.TYPE_VIEW_CLICKED or
-                AccessibilityEvent.TYPE_VIEW_LONG_CLICKED or
-                AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED or
-                AccessibilityEvent.TYPE_VIEW_FOCUSED
-        info.feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC
-        info.flags = (currentInfo?.flags ?: 0) or
-                AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS or
-                AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS or
-                AccessibilityServiceInfo.FLAG_INCLUDE_NOT_IMPORTANT_VIEWS
-        info.notificationTimeout = 50
-        serviceInfo = info
+        // Configure AccessibilityServiceInfo dynamically based on foreground requirements
+        applyServiceInfo(needsHeavyMonitoring(currentForegroundPackage))
 
         registerScreenReceiverIfNeeded()
 
         serviceScope.launch(Dispatchers.IO) {
             initializeDeferredRepository()
         }
+    }
+
+    private fun needsHeavyMonitoring(packageName: String): Boolean {
+        if (packageName.isEmpty()) return false
+        val isYouTubeTarget = searchDetectorRouter.findDetector(packageName)?.target == com.example.service.search.SearchBlockingTarget.YOUTUBE
+        val isRememberTarget = isRememberProtectionCandidate(packageName)
+        return isYouTubeTarget || isRememberTarget
+    }
+
+    private fun applyServiceInfo(needsHeavy: Boolean) {
+        if (isHeavyMonitoringActive == needsHeavy) return
+        isHeavyMonitoringActive = needsHeavy
+
+        val currentInfo = this.serviceInfo
+        val info = currentInfo ?: AccessibilityServiceInfo()
+        val baseEvents = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED or
+                AccessibilityEvent.TYPE_VIEW_CLICKED or
+                AccessibilityEvent.TYPE_VIEW_LONG_CLICKED
+
+        val noisyEvents = if (needsHeavy) {
+            AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED or
+                    AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED or
+                    AccessibilityEvent.TYPE_VIEW_FOCUSED
+        } else {
+            0
+        }
+
+        info.eventTypes = baseEvents or noisyEvents
+        info.feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC
+
+        var flags = AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS
+        if (needsHeavy) {
+            flags = flags or AccessibilityServiceInfo.FLAG_INCLUDE_NOT_IMPORTANT_VIEWS
+        }
+        info.flags = flags
+        info.notificationTimeout = 50
+        serviceInfo = info
     }
 
     private fun registerScreenReceiverIfNeeded() {
@@ -467,6 +496,11 @@ class FocusAccessibilityService : AccessibilityService() {
                     AppRepository.updateSharedSettingCache(k, v)
                 }
 
+                val remSetting = map[AppRepository.KEY_REMEMBER_PROTECTION_ENABLED]
+                if (remSetting != null) {
+                    com.example.service.safety.RememberProtectionEngine.refreshActiveState(remSetting)
+                }
+
                 searchKeywordEngine.isYouTubeEnabled = map[AppRepository.KEY_SEARCH_BLOCKING_YOUTUBE_ENABLED] == "true"
 
                 repo.saveFastProtectionSnapshot(
@@ -496,15 +530,16 @@ class FocusAccessibilityService : AccessibilityService() {
     override fun onLowMemory() {
         super.onLowMemory()
         systemCorePackageCache.clear()
+        imePackageCache.clear()
+        ephemeralSystemPackageCache.clear()
+        launcherPackageCache.clear()
         toastDebounceMap.clear()
     }
 
     private var lastSearchContentScanTime = 0L
     private var lastSearchTextChangeTime = 0L
-    private var lastWindowsChangedTime = 0L
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        val startTime = SystemClock.elapsedRealtime()
         try {
             if (event == null) return
             totalEventsCount.incrementAndGet()
@@ -576,16 +611,7 @@ class FocusAccessibilityService : AccessibilityService() {
                 return
             }
 
-            // 4. Early filter for TYPE_WINDOWS_CHANGED (drop non-window shifts)
-            if (eventType == AccessibilityEvent.TYPE_WINDOWS_CHANGED) {
-                val now = SystemClock.elapsedRealtime()
-                if (now - lastWindowsChangedTime < 300) {
-                    return
-                }
-                lastWindowsChangedTime = now
-            }
-
-            // 5. Critical Optimization: TYPE_WINDOW_CONTENT_CHANGED and TYPE_VIEW_TEXT_CHANGED strictly targeted per package
+            // 4. Critical Optimization: TYPE_WINDOW_CONTENT_CHANGED and TYPE_VIEW_TEXT_CHANGED strictly targeted per package
             if (eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED || eventType == AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED || eventType == AccessibilityEvent.TYPE_VIEW_FOCUSED) {
                 val searchDetector = searchDetectorRouter.findDetector(packageName)
                 val isSearchCandidate = searchDetector != null && searchKeywordEngine.isTargetEnabled(searchDetector.target)
@@ -619,6 +645,7 @@ class FocusAccessibilityService : AccessibilityService() {
                     previousForegroundPackage = currentForegroundPackage
                     currentForegroundPackage = packageName
                     lastForegroundChangeTime = now
+                    applyServiceInfo(needsHeavyMonitoring(packageName))
                 }
             }
 
@@ -630,19 +657,10 @@ class FocusAccessibilityService : AccessibilityService() {
                 }
             }
 
-            // 6. Check App and Screen Restrictions through modular handler pipeline
+            // 5. Check App and Screen Restrictions through modular handler pipeline
             checkAppAndScreenRestrictions(packageName, event)
         } catch (t: Throwable) {
             // ignored intentionally
-        } finally {
-            val duration = SystemClock.elapsedRealtime() - startTime
-            if (duration > 500) {
-                // ignored intentionally
-            } else if (duration > 100) {
-                // ignored intentionally
-            } else if (com.example.BuildConfig.DEBUG && duration > 50) {
-                // ignored intentionally
-            }
         }
     }
 
@@ -690,53 +708,75 @@ class FocusAccessibilityService : AccessibilityService() {
     @androidx.annotation.VisibleForTesting
     internal fun isInputMethodPackage(pkg: CharSequence?): Boolean {
         if (pkg.isNullOrBlank()) return false
-        if (pkg is String && KNOWN_IME_PACKAGES.contains(pkg)) {
-            return true
+        val key = if (pkg is String) pkg else pkg.toString()
+        val cached = imePackageCache[key]
+        if (cached != null) return cached
+
+        val result = if (key in KNOWN_IME_PACKAGES) {
+            true
+        } else {
+            key.contains("inputmethod", ignoreCase = true) ||
+                    key.contains("keyboard", ignoreCase = true) ||
+                    key.contains("honeyboard", ignoreCase = true) ||
+                    key.contains("gboard", ignoreCase = true) ||
+                    key.contains("latinime", ignoreCase = true) ||
+                    key.contains("swiftkey", ignoreCase = true) ||
+                    key.contains("samsungime", ignoreCase = true) ||
+                    key.contains("touchtype", ignoreCase = true) ||
+                    key.contains("pinyin", ignoreCase = true) ||
+                    key.contains("ime", ignoreCase = true)
         }
-        return pkg.contains("inputmethod", ignoreCase = true) ||
-                pkg.contains("keyboard", ignoreCase = true) ||
-                pkg.contains("honeyboard", ignoreCase = true) ||
-                pkg.contains("gboard", ignoreCase = true) ||
-                pkg.contains("latinime", ignoreCase = true) ||
-                pkg.contains("swiftkey", ignoreCase = true) ||
-                pkg.contains("samsungime", ignoreCase = true) ||
-                pkg.contains("touchtype", ignoreCase = true) ||
-                pkg.contains("pinyin", ignoreCase = true) ||
-                pkg.contains("ime", ignoreCase = true)
+        imePackageCache[key] = result
+        return result
     }
 
     @androidx.annotation.VisibleForTesting
     internal fun isEphemeralSystemBackgroundPackage(pkg: CharSequence?): Boolean {
         if (pkg.isNullOrBlank()) return false
-        if (pkg is String && KNOWN_EPHEMERAL_SYSTEM_PACKAGES.contains(pkg)) {
-            return true
-        }
-        if (pkg.length == 20 && pkg.startsWith("com.android.keyguard", ignoreCase = true)) return true
-        if (pkg.length == 21 && pkg.startsWith("com.android.bluetooth", ignoreCase = true)) return true
-        if (pkg.length == 15 && pkg.startsWith("com.android.nfc", ignoreCase = true)) return true
+        val key = if (pkg is String) pkg else pkg.toString()
+        val cached = ephemeralSystemPackageCache[key]
+        if (cached != null) return cached
 
-        return pkg.contains("wallpaper", ignoreCase = true) ||
-                pkg.contains("ambientindication", ignoreCase = true) ||
-                pkg.contains("screensaver", ignoreCase = true)
+        val result = if (key in KNOWN_EPHEMERAL_SYSTEM_PACKAGES) {
+            true
+        } else if (key.length == 20 && key.startsWith("com.android.keyguard", ignoreCase = true)) {
+            true
+        } else if (key.length == 21 && key.startsWith("com.android.bluetooth", ignoreCase = true)) {
+            true
+        } else if (key.length == 15 && key.startsWith("com.android.nfc", ignoreCase = true)) {
+            true
+        } else {
+            key.contains("wallpaper", ignoreCase = true) ||
+                    key.contains("ambientindication", ignoreCase = true) ||
+                    key.contains("screensaver", ignoreCase = true)
+        }
+        ephemeralSystemPackageCache[key] = result
+        return result
     }
 
     private fun isLauncherPackage(pkg: String?): Boolean {
         if (pkg.isNullOrBlank()) return false
-        if (pkg == "android" ||
+        val cached = launcherPackageCache[pkg]
+        if (cached != null) return cached
+
+        val result = if (pkg == "android" ||
             pkg == "com.miui.home" ||
             pkg == "com.google.android.apps.nexuslauncher" ||
             pkg == "com.sec.android.app.launcher"
         ) {
-            return true
+            true
+        } else {
+            val lower = pkg.lowercase()
+            lower == "android" ||
+                    lower == "com.miui.home" ||
+                    lower == "com.google.android.apps.nexuslauncher" ||
+                    lower == "com.sec.android.app.launcher" ||
+                    lower.contains("launcher") ||
+                    lower.endsWith(".home") ||
+                    lower.contains("home.ui")
         }
-        val lower = pkg.lowercase()
-        return lower == "android" ||
-                lower == "com.miui.home" ||
-                lower == "com.google.android.apps.nexuslauncher" ||
-                lower == "com.sec.android.app.launcher" ||
-                lower.contains("launcher") ||
-                lower.endsWith(".home") ||
-                lower.contains("home.ui")
+        launcherPackageCache[pkg] = result
+        return result
     }
 
     private fun isSystemCorePackage(pkg: String?): Boolean {

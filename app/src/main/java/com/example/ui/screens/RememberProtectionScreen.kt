@@ -16,9 +16,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.R
 import com.example.data.AppRepository
 import com.example.service.AccessibilityHelper
 import com.example.service.safety.RememberProtectionEngine
@@ -97,7 +99,7 @@ fun RememberProtectionScreen(
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("Remember Protection", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                            Text(stringResource(R.string.title_remember_protection), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
                             Text(
                                 text = when {
                                     !isRememberEnabled -> "Remember Protection is disabled"
@@ -135,7 +137,7 @@ fun RememberProtectionScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("Saved configurations", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextSecondary)
+                    Text(stringResource(R.string.label_saved_configurations), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextSecondary)
                     Text("${rememberedTargets.size}", fontSize = 11.sp, fontWeight = FontWeight.Medium, color = Color(0xFF38BDF8))
                 }
             }
@@ -145,14 +147,14 @@ fun RememberProtectionScreen(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text("No saved configuration yet", fontSize = 14.sp, color = TextSecondary)
+                    Text(stringResource(R.string.msg_no_saved_configurations), fontSize = 14.sp, color = TextSecondary)
                     Spacer(modifier = Modifier.height(12.dp))
                     Button(
                         onClick = { showAddDialog = true },
                         modifier = Modifier.fillMaxWidth().height(42.dp).testTag("add_remember_path_button"),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7)),
                         shape = RoundedCornerShape(8.dp)
-                    ) { Text("Add Target", fontWeight = FontWeight.Bold) }
+                    ) { Text(stringResource(R.string.btn_add_target), fontWeight = FontWeight.Bold) }
                 }
             }
         }
@@ -179,7 +181,7 @@ fun RememberProtectionScreen(
                     modifier = Modifier.fillMaxWidth().height(42.dp).testTag("add_remember_path_button"),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7)),
                     shape = RoundedCornerShape(8.dp)
-                ) { Text("Add Target", fontWeight = FontWeight.Bold) }
+                ) { Text(stringResource(R.string.btn_add_target), fontWeight = FontWeight.Bold) }
             }
         }
     }

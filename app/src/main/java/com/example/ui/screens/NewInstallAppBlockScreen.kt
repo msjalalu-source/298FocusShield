@@ -20,10 +20,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.R
 import androidx.core.graphics.drawable.toBitmap
 import androidx.compose.material.icons.filled.InstallMobile
 import com.example.data.AppRepository
@@ -81,7 +83,7 @@ fun NewInstallAppBlockScreen(
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("Automatic App Blocking", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                            Text(stringResource(R.string.title_automatic_app_blocking), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
                             Text(
                                 text = when {
                                     !isNewInstallAppBlocked -> "Automatic blocking is disabled"
@@ -120,8 +122,8 @@ fun NewInstallAppBlockScreen(
                 ) {
                     Icon(Icons.Default.CheckCircle, contentDescription = null, tint = EmeraldGreenLight, modifier = Modifier.size(36.dp))
                     Spacer(Modifier.height(8.dp))
-                    Text("No Blocked Apps", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
-                    Text("Newly installed apps will automatically be locked and listed here.", fontSize = 12.sp, color = TextSecondary)
+                    Text(stringResource(R.string.msg_no_blocked_apps), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                    Text(stringResource(R.string.msg_newly_installed_apps_info), fontSize = 12.sp, color = TextSecondary)
                 }
             }
         } else {
@@ -143,17 +145,17 @@ fun NewInstallAppBlockScreen(
         AlertDialog(
             onDismissRequest = { appToUnblock = null },
             title = { Text("Unblock \"$name\"?", fontWeight = FontWeight.Bold, color = TextPrimary) },
-            text = { Text("Unblocking requires a 10-hour delayed unlock. The app remains blocked until the timer expires.", fontSize = 13.sp, color = TextSecondary) },
+            text = { Text(stringResource(R.string.msg_unblocking_requires_10h_delay), fontSize = 13.sp, color = TextSecondary) },
             confirmButton = {
                 Button(
                     onClick = { viewModel.requestUnblockNewInstallApp(pkg); appToUnblock = null },
                     colors = ButtonDefaults.buttonColors(containerColor = AmberWarning),
                     shape = RoundedCornerShape(8.dp),
                     modifier = Modifier.testTag("confirm_unblock_app_btn")
-                ) { Text("Start 10h Delay", color = Color.Black, fontWeight = FontWeight.Bold) }
+                ) { Text(stringResource(R.string.btn_start_10h_delay), color = Color.Black, fontWeight = FontWeight.Bold) }
             },
             dismissButton = {
-                TextButton(onClick = { appToUnblock = null }) { Text("Cancel", color = TextSecondary) }
+                TextButton(onClick = { appToUnblock = null }) { Text(stringResource(R.string.btn_cancel), color = TextSecondary) }
             },
             containerColor = CardDark,
             shape = RoundedCornerShape(14.dp)
@@ -204,7 +206,7 @@ private fun BlockedAppItem(
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
                         modifier = Modifier.testTag("btn_unblock_${packageName.replace('.', '_')}")
                     ) {
-                        Text("Unblock", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        Text(stringResource(R.string.btn_unblock), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                     }
                 }
             }

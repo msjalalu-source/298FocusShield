@@ -10,10 +10,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.R
 import com.example.service.safety.RememberProtectionEngine
 import com.example.service.safety.SavedProtectionTarget
 import com.example.ui.components.commonDialogTextFieldColors
@@ -89,8 +91,8 @@ fun AddTargetDialog(
             Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = navigationPath, onValueChange = { navigationPath = it },
-                    label = { Text("Navigation Path *", fontSize = 11.sp) },
-                    placeholder = { Text("e.g. Set up portable hotspot", fontSize = 12.sp) },
+                    label = { Text(stringResource(R.string.label_navigation_path_required), fontSize = 11.sp) },
+                    placeholder = { Text(stringResource(R.string.hint_navigation_path_example), fontSize = 12.sp) },
                     singleLine = true, textStyle = LocalTextStyle.current.copy(fontSize = 13.sp),
                     shape = RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth().testTag("add_path_input"),
                     colors = commonDialogTextFieldColors()
@@ -99,7 +101,7 @@ fun AddTargetDialog(
                 if (packageOption == "Custom Package Name") {
                     OutlinedTextField(
                         value = customPackage, onValueChange = { customPackage = it },
-                        label = { Text("Custom Package Name *", fontSize = 11.sp) },
+                        label = { Text(stringResource(R.string.label_custom_package_name_required), fontSize = 11.sp) },
                         singleLine = true, textStyle = LocalTextStyle.current.copy(fontSize = 13.sp),
                         shape = RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth().testTag("add_path_package_input"),
                         colors = commonDialogTextFieldColors()
@@ -122,10 +124,10 @@ fun AddTargetDialog(
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7)), shape = RoundedCornerShape(8.dp),
                 modifier = Modifier.testTag("add_path_save_button")
-            ) { Text("Save", fontWeight = FontWeight.Bold) }
+            ) { Text(stringResource(R.string.btn_save), fontWeight = FontWeight.Bold) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss, modifier = Modifier.testTag("add_path_cancel_button")) { Text("Cancel", color = TextMuted) }
+            TextButton(onClick = onDismiss, modifier = Modifier.testTag("add_path_cancel_button")) { Text(stringResource(R.string.btn_cancel), color = TextMuted) }
         }
     )
 }
@@ -141,20 +143,20 @@ fun DeleteTargetDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss, containerColor = CardDark, shape = RoundedCornerShape(14.dp),
-        title = { Text("Delete Target (12h Unlock)", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = TextPrimary) },
+        title = { Text(stringResource(R.string.title_delete_target_12h_unlock), fontSize = 16.sp, fontWeight = FontWeight.Bold, color = TextPrimary) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("Deleting \"${target.displayName}\" (${target.packageName}) requires a 12-hour delayed unlock.", fontSize = 13.sp, color = TextSecondary)
-                Text("A 12-hour timer will begin. You can cancel deletion anytime before it expires.", fontSize = 12.sp, color = TextMuted)
+                Text(stringResource(R.string.msg_delete_target_timer_info), fontSize = 12.sp, color = TextMuted)
             }
         },
         confirmButton = {
             Button(onClick = { onConfirm(target) }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)), shape = RoundedCornerShape(8.dp), modifier = Modifier.testTag("confirm_delete_path_button")) {
-                Text("Start 10h Unlock", fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.btn_start_10h_unlock), fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss, modifier = Modifier.testTag("cancel_delete_path_button")) { Text("Cancel", color = TextMuted) }
+            TextButton(onClick = onDismiss, modifier = Modifier.testTag("cancel_delete_path_button")) { Text(stringResource(R.string.btn_cancel), color = TextMuted) }
         }
     )
 }
@@ -178,10 +180,10 @@ fun TargetDetailsDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = { onDeleteRequest(target) }) { Text("Delete (12h Unlock)", color = Color(0xFFEF4444)) }
+            TextButton(onClick = { onDeleteRequest(target) }) { Text(stringResource(R.string.btn_delete_12h_unlock), color = Color(0xFFEF4444)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Close", color = TextMuted) }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.btn_close), color = TextMuted) }
         }
     )
 }

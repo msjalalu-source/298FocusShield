@@ -15,9 +15,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.R
 import com.example.data.AppRepository
 import com.example.data.BlockedSearchKeyword
 import com.example.data.UnlockRequest
@@ -68,7 +70,7 @@ fun BlockedKeywordsScreen(
 
         item(key = "target_apps_card") {
             Column {
-                Text("Target Applications", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = TextSecondary, modifier = Modifier.padding(bottom = 8.dp))
+                Text(stringResource(R.string.title_target_applications), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = TextSecondary, modifier = Modifier.padding(bottom = 8.dp))
                 StandardCardSurface {
                     Column(modifier = Modifier.padding(vertical = 4.dp)) {
                         targetApps.forEachIndexed { index, app ->
@@ -109,7 +111,7 @@ fun BlockedKeywordsScreen(
                 ) {
                     Icon(Icons.Default.Add, contentDescription = "Add Keyword", tint = Color.White, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Add", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    Text(stringResource(R.string.btn_add), fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
                 }
             }
         }
@@ -179,13 +181,13 @@ fun AddKeywordDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add Blocked Keyword", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = TextPrimary) },
+        title = { Text(stringResource(R.string.title_add_blocked_keyword), fontSize = 17.sp, fontWeight = FontWeight.Bold, color = TextPrimary) },
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
                 OutlinedTextField(
                     value = keywordText,
                     onValueChange = { keywordText = it; errorMessage = null },
-                    placeholder = { Text("e.g. gaming, vlogs", color = TextMuted) },
+                    placeholder = { Text(stringResource(R.string.hint_keyword_example), color = TextMuted) },
                     singleLine = true,
                     isError = errorMessage != null,
                     modifier = Modifier.fillMaxWidth().testTag("input_keyword")
@@ -194,7 +196,7 @@ fun AddKeywordDialog(
                     Text(errorMessage ?: "", fontSize = 12.sp, color = Color(0xFFEF4444), modifier = Modifier.padding(top = 4.dp))
                 }
                 Spacer(modifier = Modifier.height(12.dp))
-                Text("Matching Mode:", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = TextSecondary)
+                Text(stringResource(R.string.label_matching_mode), fontSize = 13.sp, fontWeight = FontWeight.Medium, color = TextSecondary)
                 Spacer(modifier = Modifier.height(6.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf(KeywordMatchMode.CONTAINS to "Contains", KeywordMatchMode.EXACT to "Exact", KeywordMatchMode.WORD to "Word").forEach { (mode, label) ->
@@ -223,12 +225,12 @@ fun AddKeywordDialog(
                 shape = RoundedCornerShape(8.dp),
                 modifier = Modifier.testTag("btn_save_keyword")
             ) {
-                Text("Save", color = Color.White, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.btn_save), color = Color.White, fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss, modifier = Modifier.testTag("btn_cancel_keyword")) {
-                Text("Cancel", color = TextSecondary)
+                Text(stringResource(R.string.btn_cancel), color = TextSecondary)
             }
         },
         containerColor = CardDark,

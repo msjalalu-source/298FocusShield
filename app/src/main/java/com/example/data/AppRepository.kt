@@ -591,6 +591,9 @@ class AppRepository(private val appDao: AppDao, context: Context) {
             if (key == KEY_NEW_INSTALL_APP_BLOCKED) {
                 NewAppBlockStore.setFeatureEnabled(context, value == "true")
             }
+            if (key == KEY_REMEMBER_PROTECTION_ENABLED) {
+                com.example.service.safety.RememberProtectionEngine.refreshActiveState(value)
+            }
             editor.apply()
         } catch (_: Exception) {}
         com.example.service.bootstrap.CriticalProtectionBootstrap.updateSetting(key, value)
@@ -619,6 +622,9 @@ class AppRepository(private val appDao: AppDao, context: Context) {
                 }
                 if (k == KEY_NEW_INSTALL_APP_BLOCKED) {
                     NewAppBlockStore.setFeatureEnabled(context, v == "true")
+                }
+                if (k == KEY_REMEMBER_PROTECTION_ENABLED) {
+                    com.example.service.safety.RememberProtectionEngine.refreshActiveState(v)
                 }
             }
             editor.apply()
