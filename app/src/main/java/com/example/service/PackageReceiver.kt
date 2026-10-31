@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.Build
-import android.util.Log
 import androidx.core.content.ContextCompat
 import com.example.data.AppDatabase
 import com.example.data.AppRepository
@@ -53,10 +52,8 @@ class PackageReceiver : BroadcastReceiver() {
                     filter,
                     ContextCompat.RECEIVER_EXPORTED
                 )
-                Log.i(TAG, "✅ Dynamically registered PackageReceiver for package lifecycle events (API ${Build.VERSION.SDK_INT})")
             } catch (e: Exception) {
                 isRegistered.set(false)
-                Log.e(TAG, "❌ Failed to dynamically register PackageReceiver", e)
             }
         }
 
@@ -65,9 +62,8 @@ class PackageReceiver : BroadcastReceiver() {
             try {
                 val appContext = context.applicationContext ?: context
                 appContext.unregisterReceiver(receiverInstance)
-                Log.i(TAG, "Unregistered dynamic PackageReceiver")
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to unregister dynamic PackageReceiver", e)
+                // ignored intentionally
             }
         }
 
@@ -92,7 +88,6 @@ class PackageReceiver : BroadcastReceiver() {
         val isReplacing = intent.getBooleanExtra(Intent.EXTRA_REPLACING, false)
         val isFeatureOn = NewAppBlockStore.isFeatureEnabled(context)
 
-        Log.d(TAG, "Received action: $action, package: $packageName, replacing: $isReplacing, featureEnabled: $isFeatureOn")
 
         when (action) {
             Intent.ACTION_PACKAGE_ADDED -> {
@@ -129,7 +124,7 @@ class PackageReceiver : BroadcastReceiver() {
                     }
                 }
             } catch (e: Exception) {
-                Log.e("PackageReceiver", "Error processing package event $action for $packageName", e)
+                // ignored intentionally
             } finally {
                 pendingResult?.finish()
             }

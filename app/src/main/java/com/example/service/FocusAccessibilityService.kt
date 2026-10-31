@@ -8,7 +8,6 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ApplicationInfo
 import android.os.SystemClock
-import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import android.widget.Toast
@@ -257,10 +256,6 @@ class FocusAccessibilityService : AccessibilityService() {
         NewAppBlockStore.init(this)
         PackageReceiver.register(this)
         StartupTiming.recordAccessibilityOnCreate()
-        Log.i(
-            "FocusAccessibility",
-            "⚡ LIFECYCLE onCreate: PID=${android.os.Process.myPid()}, thread=${Thread.currentThread().name}, instance=${System.identityHashCode(this)}"
-        )
 
         // 1. FAST PATH: Verify existing in-memory Critical Protection (0ms DB/prefs delay if already ready)
         CriticalProtectionBootstrap.verifyAndEnsureProtection(this)
@@ -328,8 +323,8 @@ class FocusAccessibilityService : AccessibilityService() {
             performBackAction = { performSafeBackAction(currentForegroundPackage.ifEmpty { "unknown" }, "Handler navigation prevention") },
             showToast = { msg, debounceMs -> showThrottledToast(msg, debounceMs) },
             getCurrentActivity = { currentForegroundActivity },
-            recordException = { tag, msg, tr ->
-                Log.e(tag, msg, tr)
+            recordException = { _, _, _ ->
+                // ignored intentionally
             }
         )
         val contextProvider = { handlerContext }
@@ -347,10 +342,6 @@ class FocusAccessibilityService : AccessibilityService() {
     public override fun onServiceConnected() {
         super.onServiceConnected()
         StartupTiming.recordAccessibilityConnected()
-        Log.i(
-            "FocusAccessibility",
-            "LIFECYCLE onServiceConnected: PID=${android.os.Process.myPid()}, thread=${Thread.currentThread().name}, instance=${System.identityHashCode(this)}, lastEventTimestamp=$lastEventTimestampMs"
-        )
 
         // Synchronously verify Critical Protection and sync caches without duplicate snapshot reloads
         NewAppBlockStore.init(this)
@@ -401,28 +392,25 @@ class FocusAccessibilityService : AccessibilityService() {
                 val pm = getSystemService(Context.POWER_SERVICE) as? android.os.PowerManager
                 isScreenOn = pm?.isInteractive ?: true
             } catch (e: Exception) {
-                Log.e("FocusAccessibility", "Error registering screen receiver", e)
+                // ignored intentionally
             }
         }
     }
 
     private fun initializeDeferredRepository() {
         if (!UserManagerCompat.isUserUnlocked(this)) {
-            Log.i("FocusAccessibility", "Direct Boot mode active: Database deferred until device unlocked.")
             return
         }
         if (repository != null) return
 
         try {
-            Log.i("FocusAccessibility", "Initializing database and repository in background...")
             val repo = AppRepository.getInstance(this)
             this.repository = repo
             observeDataChanges(repo)
             primeCacheSynchronously(repo)
             StartupTiming.recordFullSyncComplete()
-            Log.i("FocusAccessibility", "✅ Database and repository initialized successfully.")
         } catch (e: Exception) {
-            Log.e("FocusAccessibility", "Deferred DB init exception (Critical Protection remains active)", e)
+            // ignored intentionally
         }
     }
 
@@ -440,7 +428,7 @@ class FocusAccessibilityService : AccessibilityService() {
             searchKeywordEngine.isYouTubeEnabled = state.settings[AppRepository.KEY_SEARCH_BLOCKING_YOUTUBE_ENABLED] == "true"
             rebuildMonitoredPackagesSet()
         } catch (e: Exception) {
-            Log.e("FocusAccessibility", "Error syncing service cache from bootstrap", e)
+            // ignored intentionally
         }
     }
 
@@ -500,7 +488,7 @@ class FocusAccessibilityService : AccessibilityService() {
             try {
                 repo.refreshMemoryCaches()
             } catch (e: Exception) {
-                Log.e("FocusAccessibility", "Error priming cache directly", e)
+                // ignored intentionally
             }
         }
     }
@@ -562,7 +550,7 @@ class FocusAccessibilityService : AccessibilityService() {
             if (!isLauncher && !isSystemUi && eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED && NewAppBlockStore.isFeatureEnabled()) {
                 if (isGenuinelyNewInstalledApp(packageName)) {
                     if (com.example.BuildConfig.DEBUG) {
-                        Log.d("FocusAccessibility", "Runtime discovery: newly installed package '$packageName' detected in foreground")
+                        // ignored intentionally
                     }
                     NewAppBlockStore.addBlockedAppDirect(packageName)
                     addMonitoredPackageDirect(packageName)
@@ -576,7 +564,7 @@ class FocusAccessibilityService : AccessibilityService() {
                             val repo = repository ?: AppRepository.getInstance(appContext)
                             repo.onPackageDiscoveredRuntime(packageName)
                         } catch (t: Throwable) {
-                            Log.e("FocusAccessibility", "Error processing runtime discovered package $packageName", t)
+                            // ignored intentionally
                         }
                     }
                     return
@@ -645,28 +633,15 @@ class FocusAccessibilityService : AccessibilityService() {
             // 6. Check App and Screen Restrictions through modular handler pipeline
             checkAppAndScreenRestrictions(packageName, event)
         } catch (t: Throwable) {
-            Log.e(
-                "FocusAccessibility",
-                "FATAL_ISOLATED: Error in onAccessibilityEvent (package=${event?.packageName}, eventType=${event?.eventType}, foreground=$currentForegroundPackage)",
-                t
-            )
+            // ignored intentionally
         } finally {
             val duration = SystemClock.elapsedRealtime() - startTime
             if (duration > 500) {
-                Log.e(
-                    "FocusAccessibility",
-                    "CRITICAL_TIMING: onAccessibilityEvent took ${duration}ms (package=${event?.packageName}, eventType=${event?.eventType})"
-                )
+                // ignored intentionally
             } else if (duration > 100) {
-                Log.w(
-                    "FocusAccessibility",
-                    "SERIOUS_TIMING: onAccessibilityEvent took ${duration}ms (package=${event?.packageName}, eventType=${event?.eventType})"
-                )
+                // ignored intentionally
             } else if (com.example.BuildConfig.DEBUG && duration > 50) {
-                Log.d(
-                    "FocusAccessibility",
-                    "TIMING_WARNING: onAccessibilityEvent took ${duration}ms (package=${event?.packageName}, eventType=${event?.eventType})"
-                )
+                // ignored intentionally
             }
         }
     }
@@ -851,7 +826,6 @@ class FocusAccessibilityService : AccessibilityService() {
                     try {
                         lazyRoot = rootInActiveWindow
                     } catch (t: Throwable) {
-                        Log.w("FocusAccessibility", "rootInActiveWindow threw exception safely caught for $eventPackage", t)
                         lazyRoot = null
                     }
                     isRootFetched = true
@@ -878,7 +852,7 @@ class FocusAccessibilityService : AccessibilityService() {
                 lazyRoot = null
             }
         } catch (e: Throwable) {
-            Log.e("FocusAccessibility", "Error checking restrictions for $eventPackage", e)
+            // ignored intentionally
         }
     }
 
@@ -909,7 +883,7 @@ class FocusAccessibilityService : AccessibilityService() {
         return try {
             performGlobalAction(GLOBAL_ACTION_HOME)
         } catch (t: Throwable) {
-            Log.e("FocusAccessibility", "performGlobalAction(GLOBAL_ACTION_HOME) failed safely for $effectivePackage ($reason)", t)
+            // ignored intentionally
             false
         }
     }
@@ -928,11 +902,7 @@ class FocusAccessibilityService : AccessibilityService() {
         return try {
             performGlobalAction(GLOBAL_ACTION_BACK)
         } catch (t: Throwable) {
-            Log.e(
-                "FocusAccessibility",
-                "performGlobalAction(GLOBAL_ACTION_BACK) failed safely for $targetPackage ($reason)",
-                t
-            )
+            // ignored intentionally
             false
         }
     }
@@ -953,23 +923,16 @@ class FocusAccessibilityService : AccessibilityService() {
             try {
                 Toast.makeText(applicationContext, message, Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {
-                Log.e("FocusAccessibility", "Error displaying toast", e)
+                // ignored intentionally
             }
         }
     }
 
     override fun onInterrupt() {
-        Log.w(
-            "FocusAccessibility",
-            "⚠️ LIFECYCLE onInterrupt: PID=${android.os.Process.myPid()}, thread=${Thread.currentThread().name}, instance=${System.identityHashCode(this)}, lastEventTimestamp=$lastEventTimestampMs"
-        )
+        // ignored intentionally
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
-        Log.w(
-            "FocusAccessibility",
-            "⚠️ LIFECYCLE onUnbind: PID=${android.os.Process.myPid()}, thread=${Thread.currentThread().name}, instance=${System.identityHashCode(this)}, totalEvents=${totalEventsCount.get()}, lastEventTimestamp=$lastEventTimestampMs, lastEnforcedPackage=$lastEnforcedPackage, lastEnforcementTime=$lastEnforcementTime"
-        )
         if (serviceInstance === this) {
             serviceInstance = null
         }
@@ -981,10 +944,6 @@ class FocusAccessibilityService : AccessibilityService() {
 
     override fun onRebind(intent: Intent?) {
         super.onRebind(intent)
-        Log.i(
-            "FocusAccessibility",
-            "🔄 LIFECYCLE onRebind: PID=${android.os.Process.myPid()}, thread=${Thread.currentThread().name}, instance=${System.identityHashCode(this)}, lastEventTimestamp=$lastEventTimestampMs"
-        )
         serviceInstance = this
         com.example.service.bootstrap.CriticalProtectionBootstrap.markServiceConnected()
         com.example.service.bootstrap.CriticalProtectionBootstrap.verifyAndEnsureProtection(this)
@@ -1002,10 +961,6 @@ class FocusAccessibilityService : AccessibilityService() {
 
     override fun onDestroy() {
         super.onDestroy()
-        Log.i(
-            "FocusAccessibility",
-            "LIFECYCLE onDestroy: PID=${android.os.Process.myPid()}, thread=${Thread.currentThread().name}, instance=${System.identityHashCode(this)}, totalEvents=${totalEventsCount.get()}, lastEventTimestamp=$lastEventTimestampMs, lastEnforcedPackage=$lastEnforcedPackage, lastEnforcementTime=$lastEnforcementTime"
-        )
         if (serviceInstance === this) {
             serviceInstance = null
         }
@@ -1015,7 +970,7 @@ class FocusAccessibilityService : AccessibilityService() {
                 unregisterReceiver(screenReceiver)
                 isScreenReceiverRegistered = false
             } catch (e: Exception) {
-                Log.e("FocusAccessibility", "Error unregistering screen receiver", e)
+                // ignored intentionally
             }
         }
         serviceScope.cancel()

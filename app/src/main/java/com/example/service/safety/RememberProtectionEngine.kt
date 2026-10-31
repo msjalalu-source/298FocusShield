@@ -1,7 +1,6 @@
 package com.example.service.safety
 
 import android.content.Context
-import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import com.example.data.AppRepository
@@ -363,7 +362,7 @@ object RememberProtectionEngine {
                 .putString("setting_${AppRepository.KEY_SAVED_PROTECTION_TARGET}", encoded)
                 .apply()
         } catch (e: Exception) {
-            Log.w(TAG, "Failed saving targets to prefs", e)
+            // ignored intentionally
         }
 
         val targetRepo = repository ?: try {
@@ -547,10 +546,6 @@ object RememberProtectionEngine {
             if (!isMatched) continue
 
             // All 3 universal conditions matched -> BLOCK
-            Log.i(
-                TAG,
-                "🛡️ [REMEMBER_UNIVERSAL_MATCH] targetId='${target.id}' pkg='${target.packageName}' path='${target.navigationPath}' eventType='${target.eventType}' -> BLOCK"
-            )
             return SafetyProtectionDecision.Block(
                 targetName = "Remember Protection",
                 targetType = ProtectionTargetType.TARGET_SPECIFIC_CONTROL,

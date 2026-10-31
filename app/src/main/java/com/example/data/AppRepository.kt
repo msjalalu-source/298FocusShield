@@ -169,7 +169,7 @@ class AppRepository(private val appDao: AppDao, context: Context) {
             try {
                 DeviceAdminManager.syncAndVerifyPolicyState(context, this@AppRepository)
             } catch (e: Exception) {
-                android.util.Log.e("AppRepository", "Error during background policy sync", e)
+                // ignored intentionally
             }
         }
     }
@@ -178,7 +178,7 @@ class AppRepository(private val appDao: AppDao, context: Context) {
         try {
             DeviceAdminManager.syncAndVerifyPolicyState(context, this@AppRepository)
         } catch (e: Exception) {
-            android.util.Log.e("AppRepository", "Error syncing device policies", e)
+            // ignored intentionally
         }
     }
 
@@ -841,7 +841,7 @@ class AppRepository(private val appDao: AppDao, context: Context) {
                 refreshMemoryCaches()
             }
         } catch (e: Exception) {
-            android.util.Log.e("AppRepository", "Error ensuring default blocked keywords", e)
+            // ignored intentionally
         }
     }
 
@@ -894,7 +894,7 @@ class AppRepository(private val appDao: AppDao, context: Context) {
                 )
             }
         } catch (e: Exception) {
-            android.util.Log.e("AppRepository", "Error ensuring default remember targets", e)
+            // ignored intentionally
         }
     }
 

@@ -4,7 +4,6 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
-import android.util.Log
 
 /**
  * Auto-Prompt & Exemption Manager inspired by BlockerHero.
@@ -84,7 +83,7 @@ object BatteryOptimizationHelper {
             }
             context.startActivity(intent)
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to open app details", e)
+            // ignored intentionally
         }
     }
 }

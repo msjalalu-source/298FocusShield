@@ -2,7 +2,6 @@ package com.example.service.accessibility.handlers
 
 import android.accessibilityservice.AccessibilityService
 import android.content.Context
-import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import com.example.data.AppRepository
@@ -50,8 +49,8 @@ data class AccessibilityHandlerContext(
     val performBackAction: () -> Boolean,
     val showToast: (String, Long) -> Unit,
     val getCurrentActivity: () -> String = { "" },
-    val recordException: (tag: String, message: String, throwable: Throwable) -> Unit = { tag, msg, tr ->
-        Log.e(tag, msg, tr)
+    val recordException: (tag: String, message: String, throwable: Throwable) -> Unit = { _, _, _ ->
+        // ignored intentionally
     },
     val protectionEngine: com.example.service.protection.ProtectionEngine? = null,
     val coroutineScope: kotlinx.coroutines.CoroutineScope? = null

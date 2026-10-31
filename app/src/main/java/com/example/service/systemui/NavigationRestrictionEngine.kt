@@ -1,7 +1,6 @@
 package com.example.service.systemui
 
 import android.os.SystemClock
-import android.util.Log
 
 /**
  * Handles navigation restriction execution and throttling (Back/Home prevention).
@@ -54,7 +53,7 @@ object NavigationRestrictionEngine {
         try {
             backSuccess = performBack()
         } catch (e: Exception) {
-            Log.e(AUDIT_TAG, "🛡️ [AUDIT_ACTION] Error performing back navigation for '$targetName'", e)
+            // ignored intentionally
         }
 
         var homeSuccess: Boolean? = null
@@ -62,15 +61,10 @@ object NavigationRestrictionEngine {
             try {
                 homeSuccess = performHome()
             } catch (e: Exception) {
-                Log.e(AUDIT_TAG, "🛡️ [AUDIT_ACTION] Error executing performHomeAction fallback for '$targetName'", e)
+                // ignored intentionally
             }
         }
 
-        Log.i(
-            AUDIT_TAG,
-            "🛡️ [AUDIT_ACTION] Target '$targetName' restricted: back=$backSuccess, repeatCount=$repeatCount" +
-                (if (homeSuccess != null) ", fallbackHome=$homeSuccess" else "")
-        )
         return true
     }
 

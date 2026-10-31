@@ -3,7 +3,6 @@ package com.example.service
 import android.content.Context
 import android.content.SharedPreferences
 import android.content.pm.ApplicationInfo
-import android.util.Log
 import com.example.data.AppRepository
 import com.example.service.bootstrap.CriticalProtectionBootstrap
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -90,9 +89,8 @@ object NewAppBlockStore {
                 }
                 isInitialized = true
                 isTestingSimulation = false
-                Log.d(TAG, "Initialized with ${inMemoryBlockedApps.size} blocked new apps (enabled: $isFeatureEnabledCache)")
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to initialize NewAppBlockStore", e)
+                // ignored intentionally
             }
         }
     }
@@ -137,7 +135,6 @@ object NewAppBlockStore {
             }
             editor.apply()
         } catch (_: Exception) {}
-        Log.i("NewInstallDebug", "NewAppBlockStore setFeatureEnabled: $enabled")
     }
 
     fun enableFeature(context: Context) {
@@ -224,7 +221,6 @@ object NewAppBlockStore {
         // 3. Persist asynchronously
         persistAsync(context)
 
-        Log.d(TAG, "addBlockedApp: packageName = $packageName, total = ${inMemoryBlockedApps.size}")
         return true
     }
 
@@ -262,7 +258,6 @@ object NewAppBlockStore {
         FocusAccessibilityService.notifyPackageInstalled(packageName, shouldBlock = false)
         updateFlow()
         persistAsync(context)
-        Log.i(TAG, "Removed app from blocked set: $packageName")
         return true
     }
 
@@ -280,7 +275,6 @@ object NewAppBlockStore {
         persistAsync(context)
         isInitialized = true
         isTestingSimulation = false
-        Log.i(TAG, "Cleared all blocked new apps")
     }
 
     /**
@@ -315,7 +309,7 @@ object NewAppBlockStore {
                 .putStringSet(PREFS_KEY_BLOCKED_NEW_APPS, snapshot)
                 .apply()
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to asynchronously persist blocked apps", e)
+            // ignored intentionally
         }
     }
 

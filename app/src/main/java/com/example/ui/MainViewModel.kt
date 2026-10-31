@@ -1,7 +1,6 @@
 package com.example.ui
 
 import android.app.Application
-import android.util.Log
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -365,7 +364,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     repository.deleteUnlockRequest(pending.id)
                 }
                 if (featureKey == AppRepository.KEY_NEW_INSTALL_APP_BLOCKED) {
-                    Log.i("NewInstallDebug", "Settings toggle: KEY_NEW_INSTALL_APP_BLOCKED = true")
+                    // ignored intentionally
                 }
                 repository.setSetting(featureKey, "true")
             }

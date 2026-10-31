@@ -4,7 +4,6 @@ import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.util.Log
 import com.example.data.AppRepository
 
 /**
@@ -36,7 +35,7 @@ object DeviceAdminManager {
         return try {
             context.applicationContext.getSystemService(Context.DEVICE_POLICY_SERVICE) as? DevicePolicyManager
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to obtain DevicePolicyManager", e)
+            // ignored intentionally
             null
         }
     }
@@ -50,7 +49,7 @@ object DeviceAdminManager {
         return try {
             dpm.isAdminActive(admin)
         } catch (e: Exception) {
-            Log.w(TAG, "isAdminActive check failed for $admin", e)
+            // ignored intentionally
             false
         }
     }
@@ -77,11 +76,10 @@ object DeviceAdminManager {
         return try {
             if (dpm.isAdminActive(admin)) {
                 dpm.removeActiveAdmin(admin)
-                Log.i(TAG, "Device Admin successfully deactivated")
             }
             true
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to deactivate device admin", e)
+            // ignored intentionally
             false
         }
     }
@@ -96,7 +94,6 @@ object DeviceAdminManager {
 
         if (isSettingEnabled && !isActive) {
             // If Device Admin was disabled in Android system settings, sync persistent setting to false
-            Log.i(TAG, "Device Admin is inactive. Syncing persistent setting to false.")
             repository.setSetting(AppRepository.KEY_UNINSTALL_PROTECTION, "false")
         }
     }

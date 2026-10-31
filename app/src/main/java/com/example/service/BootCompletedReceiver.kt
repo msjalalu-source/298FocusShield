@@ -4,7 +4,6 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.os.SystemClock
-import android.util.Log
 import androidx.core.os.UserManagerCompat
 import com.example.data.AppDatabase
 import com.example.data.AppRepository
@@ -61,7 +60,6 @@ class BootCompletedReceiver : BroadcastReceiver() {
         }
 
         val appContext = context.applicationContext ?: context
-        Log.i(TAG, "⚡ Boot/Lifecycle event received: $action")
 
         // STEP 1: FAST PATH - Verify existing in-memory Critical Protection (0ms SharedPreferences reload if ready)
         CriticalProtectionBootstrap.verifyAndEnsureProtection(appContext)
@@ -69,7 +67,6 @@ class BootCompletedReceiver : BroadcastReceiver() {
 
         val isUnlocked = UserManagerCompat.isUserUnlocked(appContext)
         if (!isUnlocked) {
-            Log.i(TAG, "🔒 Direct Boot (LOCKED_BOOT_COMPLETED): Critical Protection ACTIVE in Device Protected mode.")
             return
         }
 
@@ -89,13 +86,11 @@ class BootCompletedReceiver : BroadcastReceiver() {
         val repository = AppRepository.getInstance(appContext)
         repository.repositoryScope.launch(Dispatchers.IO) {
             try {
-                Log.i(TAG, "🔓 Device Unlocked: Executing deferred background database synchronization...")
                 repository.refreshMemoryCaches()
                 repository.checkAndProcessUnlockRequests()
                 StartupTiming.recordFullSyncComplete()
-                Log.i(TAG, "✅ Full service synchronization complete.")
             } catch (e: Exception) {
-                Log.e(TAG, "Error during deferred boot database sync (Critical Protection remains active)", e)
+                // ignored intentionally
             } finally {
                 try {
                     pendingResult?.finish()

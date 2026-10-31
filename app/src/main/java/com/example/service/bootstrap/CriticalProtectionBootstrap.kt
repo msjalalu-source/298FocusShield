@@ -2,7 +2,6 @@ package com.example.service.bootstrap
 
 import android.content.Context
 import android.os.SystemClock
-import android.util.Log
 import com.example.data.AppRepository
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
@@ -81,17 +80,12 @@ object CriticalProtectionBootstrap {
                 StartupTiming.recordCriticalStateReady()
                 StartupTiming.recordSystemUiProtectionReady()
 
-                Log.i(
-                    TAG,
-                    "⏱️ [CRITICAL_BOOTSTRAP_READY] elapsedRealtime=${loadFinishedTime}ms, State: READY, CC Edit Lock: ${readyState.controlCenterLockEnabled}, Protection Ready: true"
-                )
 
                 // Step 2: Asynchronously load Full Protection Snapshot (locked apps, all settings)
                 loadFullSnapshotAsync(appContext)
 
                 return readyState
             } catch (e: Exception) {
-                Log.e(INNER_TAG, "Error bootstrapping minimal critical protection snapshot", e)
                 val fallback = CriticalProtectionState(
                     readinessState = CriticalReadinessState.READY,
                     controlCenterLockEnabled = false,
@@ -128,7 +122,6 @@ object CriticalProtectionBootstrap {
                 controlCenterProtectionReady = true
             )
         }
-        Log.i(TAG, "⏱️ [ACCESSIBILITY_SERVICE_CONNECTED] State: READY, elapsedRealtime=${SystemClock.elapsedRealtime()}ms")
     }
 
     /**
@@ -141,7 +134,6 @@ object CriticalProtectionBootstrap {
                 controlCenterProtectionReady = true
             )
         }
-        Log.i(TAG, "⏱️ [CRITICAL_ENFORCEMENT_READY] State: READY, elapsedRealtime=${SystemClock.elapsedRealtime()}ms")
     }
 
     /**
@@ -178,7 +170,7 @@ object CriticalProtectionBootstrap {
                     }
                 }
             } catch (e: Exception) {
-                Log.e(INNER_TAG, "Error loading full protection snapshot asynchronously", e)
+                // ignored intentionally
             }
         }
     }
@@ -214,7 +206,6 @@ object CriticalProtectionBootstrap {
                 readinessState = CriticalReadinessState.DEGRADED
             )
         }
-        Log.i(TAG, "⚠️ [ACCESSIBILITY_SERVICE_DISCONNECTED] State: DEGRADED, elapsedRealtime=${SystemClock.elapsedRealtime()}ms")
     }
 
     /**

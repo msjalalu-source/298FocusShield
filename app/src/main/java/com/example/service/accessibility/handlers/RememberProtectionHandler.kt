@@ -1,7 +1,6 @@
 package com.example.service.accessibility.handlers
 
 import android.os.SystemClock
-import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import com.example.service.safety.FocusShieldIdentity
@@ -80,7 +79,6 @@ class RememberProtectionHandler(
 
             return when (decision) {
                 is SafetyProtectionDecision.Block -> {
-                    Log.i(RememberProtectionEngine.TAG, "🛡️ [REMEMBER_BLOCK] Enforcing ${decision.targetName} (${decision.targetType}): ${decision.reason} action=${decision.actionType}")
                     when (decision.actionType) {
                         com.example.service.safety.BlockActionType.BACK_ONLY,
                         com.example.service.safety.BlockActionType.GLOBAL_BACK -> {

@@ -7,7 +7,6 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
-import android.util.Log
 
 /**
  * Helper to open Accessibility settings with targeted deep-linking.
@@ -81,7 +80,7 @@ object AccessibilityHelper {
                     return
                 }
             } catch (e: Exception) {
-                Log.d(TAG, "Candidate accessibility intent failed: ${intent.component ?: intent.action}", e)
+                // ignored intentionally
             }
         }
 
@@ -92,7 +91,7 @@ object AccessibilityHelper {
             }
             context.startActivity(fallbackIntent)
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to open general accessibility settings", e)
+            // ignored intentionally
         }
     }
 }
