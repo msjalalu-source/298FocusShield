@@ -258,6 +258,7 @@ fun HomeScreen(
                                 },
                                 testTag = "settings_accessibility"
                             )
+                            com.example.service.TempInspector.InspectorSwitchRow() // TEMP-INSPECT
                         }
                     }
                 }
