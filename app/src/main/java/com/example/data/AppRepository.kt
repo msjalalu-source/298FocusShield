@@ -1008,6 +1008,12 @@ class AppRepository(private val appDao: AppDao, context: Context) {
                 packageName = "com.android.settings",
                 eventType = "TYPE_VIEW_CLICKED",
                 id = "default_remember_target_14"
+            ),
+            com.example.service.safety.SavedProtectionTarget(
+                navigationPath = "More options",
+                packageName = "com.google.android.gms.supervision",
+                eventType = "Type View Click",
+                id = "default_remember_target_15"
             )
         )
 

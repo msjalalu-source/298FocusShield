@@ -196,6 +196,7 @@ class FocusAccessibilityService : AccessibilityService() {
     @androidx.annotation.VisibleForTesting
     internal fun resetHomeActionCooldownsForTesting() {
         lastHomeActionTimeMap.clear()
+        cancelPendingVerificationCheck()
     }
 
     @androidx.annotation.VisibleForTesting
@@ -897,28 +898,90 @@ class FocusAccessibilityService : AccessibilityService() {
     }
 
     private val retryHandler = android.os.Handler(android.os.Looper.getMainLooper())
-    private val pendingHomeRetry = ConcurrentHashMap.newKeySet<String>()
+    private var pendingVerificationCheck: Runnable? = null
+
+    private fun cancelPendingVerificationCheck() {
+        pendingVerificationCheck?.let {
+            retryHandler.removeCallbacks(it)
+            pendingVerificationCheck = null
+        }
+    }
+
+    private fun getCurrentForegroundPackage(): String {
+        val fg = currentForegroundPackage.trim()
+        if (fg.isNotEmpty()) return fg
+        return try {
+            rootInActiveWindow?.packageName?.toString()?.trim() ?: ""
+        } catch (t: Throwable) {
+            ""
+        }
+    }
+
+    private fun scheduleVerificationCheck(blockedPackage: String) {
+        if (blockedPackage.isEmpty() || blockedPackage == "unknown") return
+
+        cancelPendingVerificationCheck()
+
+        val check1 = object : Runnable {
+            override fun run() {
+                if (!isScreenOn) {
+                    pendingVerificationCheck = null
+                    return
+                }
+
+                val currentFg = getCurrentForegroundPackage()
+                if (currentFg != blockedPackage) {
+                    pendingVerificationCheck = null
+                    return
+                }
+
+                // Retry 1: Press HOME again if still inside the blocked package
+                try {
+                    performGlobalAction(GLOBAL_ACTION_HOME)
+                } catch (t: Throwable) {
+                    // ignored intentionally
+                }
+
+                // Schedule second check (about 700ms after the initial block, 400ms after the 300ms check)
+                val check2 = Runnable {
+                    pendingVerificationCheck = null
+                    if (isScreenOn) {
+                        val fgAfterRetry = getCurrentForegroundPackage()
+                        if (fgAfterRetry == blockedPackage) {
+                            // Retry 2: Press HOME again (maximum 3 HOME presses total per block)
+                            try {
+                                performGlobalAction(GLOBAL_ACTION_HOME)
+                            } catch (t: Throwable) {
+                                // ignored intentionally
+                            }
+                        }
+                    }
+                }
+
+                pendingVerificationCheck = check2
+                retryHandler.postDelayed(check2, 400L)
+            }
+        }
+
+        pendingVerificationCheck = check1
+        retryHandler.postDelayed(check1, 300L)
+    }
 
     fun performSafeHomeAction(targetPackage: String, reason: String): Boolean {
         val effectivePackage = if (targetPackage.isNotEmpty()) targetPackage else "unknown"
         val now = SystemClock.elapsedRealtime()
         val previousTime = lastHomeActionTimeMap[effectivePackage] ?: 0L
 
-        // Short cooldown (250ms). If skipped, schedule one retry so the app cannot stay open.
+        // Short cooldown (250ms). If skipped, schedule verification check so quick reentry is caught.
         if (previousTime > 0L && now - previousTime < 250L) {
-            if (effectivePackage != "unknown" && pendingHomeRetry.add(effectivePackage)) {
-                retryHandler.postDelayed({
-                    pendingHomeRetry.remove(effectivePackage)
-                    if (currentForegroundPackage == effectivePackage) {
-                        performSafeHomeAction(effectivePackage, "$reason (retry)")
-                    }
-                }, 300L)
-            }
+            scheduleVerificationCheck(effectivePackage)
             return false
         }
 
         lastHomeActionTimeMap[effectivePackage] = now
         cleanupStaleHomeActionTimes(now)
+
+        scheduleVerificationCheck(effectivePackage)
 
         return try {
             val result = performGlobalAction(GLOBAL_ACTION_HOME)
@@ -974,6 +1037,7 @@ class FocusAccessibilityService : AccessibilityService() {
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
+        cancelPendingVerificationCheck()
         TempInspector.cleanUp() // TEMP-INSPECT
         if (serviceInstance === this) {
             serviceInstance = null
@@ -1003,6 +1067,7 @@ class FocusAccessibilityService : AccessibilityService() {
 
     override fun onDestroy() {
         super.onDestroy()
+        cancelPendingVerificationCheck()
         TempInspector.cleanUp() // TEMP-INSPECT
         if (serviceInstance === this) {
             serviceInstance = null

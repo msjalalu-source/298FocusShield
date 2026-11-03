@@ -7,7 +7,6 @@ import com.example.service.safety.FocusShieldIdentity
 import com.example.service.safety.RememberProtectionEngine
 import com.example.service.safety.SafetyProtectionContext
 import com.example.service.safety.SafetyProtectionDecision
-import com.example.service.systemui.NavigationRestrictionEngine
 
 /**
  * Dedicated handler routing Accessibility events into the Remember Protection engine.
@@ -84,20 +83,8 @@ class RememberProtectionHandler(
                         com.example.service.safety.BlockActionType.GLOBAL_BACK -> {
                             ctx.performBackAction()
                         }
-                        com.example.service.safety.BlockActionType.NAVIGATION_HOME,
-                        com.example.service.safety.BlockActionType.GLOBAL_HOME -> {
-                            NavigationRestrictionEngine.executeNavigationPrevention(
-                                targetName = decision.targetName,
-                                performBack = { false },
-                                performHome = { ctx.performHomeAction(packageName) }
-                            )
-                        }
                         else -> {
-                            NavigationRestrictionEngine.executeNavigationPrevention(
-                                targetName = decision.targetName,
-                                performBack = ctx.performBackAction,
-                                performHome = { ctx.performHomeAction(packageName) }
-                            )
+                            ctx.performHomeAction(packageName)
                         }
                     }
                     true
