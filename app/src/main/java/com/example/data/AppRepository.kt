@@ -868,6 +868,11 @@ class AppRepository(private val appDao: AppDao, context: Context) {
             val existingTargets = com.example.service.safety.RememberProtectionEngine.decodeTargets(raw).toMutableList()
             var updated = false
 
+            // one-time cleanup of a removed default
+            if (existingTargets.removeAll { it.id == "default_remember_target_15" }) {
+                updated = true
+            }
+
             for (defaultTarget in DEFAULT_REMEMBER_TARGETS) {
                 val existingIndex = existingTargets.indexOfFirst { existing ->
                     (existing.id.isNotEmpty() && existing.id == defaultTarget.id) ||
@@ -1010,10 +1015,16 @@ class AppRepository(private val appDao: AppDao, context: Context) {
                 id = "default_remember_target_14"
             ),
             com.example.service.safety.SavedProtectionTarget(
-                navigationPath = "More options",
-                packageName = "com.google.android.gms.supervision",
+                navigationPath = "Parental controls",
+                packageName = "com.miui.home",
                 eventType = "Type View Click",
-                id = "default_remember_target_15"
+                id = "default_remember_target_16"
+            ),
+            com.example.service.safety.SavedProtectionTarget(
+                navigationPath = "Digital Wellbeing & parental controls",
+                packageName = "com.android.settings",
+                eventType = "Type View Click",
+                id = "default_remember_target_17"
             )
         )
 
