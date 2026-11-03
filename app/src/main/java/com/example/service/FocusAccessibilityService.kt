@@ -540,6 +540,7 @@ class FocusAccessibilityService : AccessibilityService() {
     private var lastSearchTextChangeTime = 0L
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        TempDiag.onEventReceived(this, event) // TEMP-DIAG
         try {
             if (event == null) return
             totalEventsCount.incrementAndGet()
@@ -906,6 +907,7 @@ class FocusAccessibilityService : AccessibilityService() {
 
         // Short cooldown (250ms). If skipped, schedule one retry so the app cannot stay open.
         if (previousTime > 0L && now - previousTime < 250L) {
+            TempDiag.onBlockSkipped(this, "cooldown", effectivePackage) // TEMP-DIAG
             if (effectivePackage != "unknown" && pendingHomeRetry.add(effectivePackage)) {
                 retryHandler.postDelayed({
                     pendingHomeRetry.remove(effectivePackage)
@@ -921,7 +923,9 @@ class FocusAccessibilityService : AccessibilityService() {
         cleanupStaleHomeActionTimes(now)
 
         return try {
-            performGlobalAction(GLOBAL_ACTION_HOME)
+            val result = performGlobalAction(GLOBAL_ACTION_HOME)
+            TempDiag.onBlockAttempt(this, result, effectivePackage) // TEMP-DIAG
+            result
         } catch (t: Throwable) {
             // ignored intentionally
             false
