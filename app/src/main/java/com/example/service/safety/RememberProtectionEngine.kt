@@ -177,17 +177,6 @@ object RememberProtectionEngine {
     }
 
     /**
-     * Checks if any Remember Protection targets are currently saved.
-     */
-    fun hasSavedTargets(context: Context? = null): Boolean {
-        cachedTargets?.let { return it.isNotEmpty() }
-        if (context != null) {
-            return getSavedTargets(context).isNotEmpty()
-        }
-        return candidatePackages.isNotEmpty()
-    }
-
-    /**
      * Verifies if the package matches any user-saved Remember Protection target.
      * Uses O(1) in-memory Set lookup for zero Binder IPC during Accessibility events.
      */
@@ -457,133 +446,47 @@ object RememberProtectionEngine {
     }
 
     /**
-     * Snapshot of node text and package information for bounded descendant evaluation.
-     */
-    data class NodeTextSnapshot(
-        val packageName: String,
-        val text: String,
-        val contentDescription: String
-    )
-
-    private fun extractNodeSnapshots(
-        event: AccessibilityEvent,
-        maxDepth: Int = 3,
-        maxVisited: Int = 20
-    ): List<NodeTextSnapshot> {
-        val s = try { event.source } catch (_: Exception) { null } ?: return emptyList()
-        val result = ArrayList<NodeTextSnapshot>(maxVisited)
-        val queue = ArrayDeque<Pair<AccessibilityNodeInfo, Int>>()
-
-        try {
-            val rootPkg = s.packageName?.toString()?.trim().orEmpty()
-            val rootText = s.text?.toString()?.trim().orEmpty()
-            val rootDesc = s.contentDescription?.toString()?.trim().orEmpty()
-            if (rootPkg.isNotEmpty() || rootText.isNotEmpty() || rootDesc.isNotEmpty()) {
-                result.add(NodeTextSnapshot(rootPkg, rootText, rootDesc))
-            }
-
-            val count = try { s.childCount } catch (_: Exception) { 0 }
-            for (i in 0 until count) {
-                if (queue.size >= maxVisited) break
-                val child = try { s.getChild(i) } catch (_: Exception) { null }
-                if (child != null) {
-                    queue.add(child to 1)
-                }
-            }
-
-            var visited = 0
-            while (queue.isNotEmpty() && visited < maxVisited) {
-                val (current, depth) = queue.removeFirst()
-                visited++
-                try {
-                    val pkg = current.packageName?.toString()?.trim().orEmpty()
-                    val text = current.text?.toString()?.trim().orEmpty()
-                    val desc = current.contentDescription?.toString()?.trim().orEmpty()
-                    if (pkg.isNotEmpty() || text.isNotEmpty() || desc.isNotEmpty()) {
-                        result.add(NodeTextSnapshot(pkg, text, desc))
-                    }
-
-                    if (depth < maxDepth && visited + queue.size < maxVisited) {
-                        val childCount = try { current.childCount } catch (_: Exception) { 0 }
-                        for (i in 0 until childCount) {
-                            if (visited + queue.size >= maxVisited) break
-                            val next = try { current.getChild(i) } catch (_: Exception) { null }
-                            if (next != null) {
-                                queue.add(next to depth + 1)
-                            }
-                        }
-                    }
-                } finally {
-                    try { current.recycle() } catch (_: Exception) {}
-                }
-            }
-        } finally {
-            while (queue.isNotEmpty()) {
-                val (rem, _) = queue.removeFirst()
-                try { rem.recycle() } catch (_: Exception) {}
-            }
-            try { s.recycle() } catch (_: Exception) {}
-        }
-
-        return result
-    }
-
-    fun matchesSnapshot(
-        snapshots: List<NodeTextSnapshot>,
-        targetPackageName: String,
-        navigationPath: String,
-        isSystemUiEvent: Boolean
-    ): Boolean {
-        if (navigationPath.isEmpty()) return false
-        for (snap in snapshots) {
-            val pkgMatches = if (isSystemUiEvent) {
-                snap.packageName.isNotEmpty() && snap.packageName.equals(targetPackageName, ignoreCase = true)
-            } else {
-                snap.packageName.isEmpty() || snap.packageName.equals(targetPackageName, ignoreCase = true)
-            }
-            if (pkgMatches) {
-                if (snap.text.isNotEmpty() && matchesNavigationPath(snap.text, navigationPath)) {
-                    return true
-                }
-                if (snap.contentDescription.isNotEmpty() && matchesNavigationPath(snap.contentDescription, navigationPath)) {
-                    return true
-                }
-            }
-        }
-        return false
-    }
-
-    /**
      * Matches an accessibility event against a saved target navigation path:
-     * Evaluates direct event text/contentDescription, clicked node, and bounded descendants.
+     * Evaluates clicked node text and contentDescription, as well as direct event text and contentDescription.
+     * View ID / Resource ID / identifier matching has been completely removed.
      */
     fun isNavigationPathMatching(
         event: AccessibilityEvent,
-        navigationPath: String,
-        targetPackageName: String = "",
-        isSystemUiEvent: Boolean = false,
-        cachedSnapshots: List<NodeTextSnapshot>? = null
+        navigationPath: String
     ): Boolean {
         if (navigationPath.isEmpty()) return false
 
-        // 1. Direct event text or content description fallback (for non-SystemUI events)
-        if (!isSystemUiEvent) {
-            event.text?.forEach { t ->
-                val str = t.toString().trim()
-                if (matchesNavigationPath(str, navigationPath)) {
+        // 1. Direct text / content description match on event source node
+        val s = try { event.source } catch (_: Exception) { null }
+        if (s != null) {
+            try {
+                val nodeText = s.text?.toString()?.trim().orEmpty()
+                if (nodeText.isNotEmpty() && matchesNavigationPath(nodeText, navigationPath)) {
                     return true
                 }
-            }
-            event.contentDescription?.toString()?.trim()?.let { desc ->
-                if (matchesNavigationPath(desc, navigationPath)) {
+                val nodeDesc = s.contentDescription?.toString()?.trim().orEmpty()
+                if (nodeDesc.isNotEmpty() && matchesNavigationPath(nodeDesc, navigationPath)) {
                     return true
                 }
+            } finally {
+                try { s.recycle() } catch (_: Exception) {}
             }
         }
 
-        // 2. Direct clicked node & bounded descendant evaluation
-        val snapshots = cachedSnapshots ?: extractNodeSnapshots(event)
-        return matchesSnapshot(snapshots, targetPackageName, navigationPath, isSystemUiEvent)
+        // 2. Direct event text or content description fallback
+        event.text?.forEach { t ->
+            val str = t.toString().trim()
+            if (matchesNavigationPath(str, navigationPath)) {
+                return true
+            }
+        }
+        event.contentDescription?.toString()?.trim()?.let { desc ->
+            if (matchesNavigationPath(desc, navigationPath)) {
+                return true
+            }
+        }
+
+        return false
     }
 
     fun isClickedNodeOrContextMatching(event: AccessibilityEvent, navigationPath: String): Boolean {
@@ -591,7 +494,7 @@ object RememberProtectionEngine {
     }
 
     fun isClickedNodeOrContextMatching(event: AccessibilityEvent, target: SavedProtectionTarget): Boolean {
-        return isNavigationPathMatching(event, target.trimmedNavigationPath, target.trimmedPackageName, false)
+        return isNavigationPathMatching(event, target.trimmedNavigationPath)
     }
 
     /**
@@ -626,31 +529,18 @@ object RememberProtectionEngine {
 
         // 3. Universal Matching Rule:
         // Package Name MATCH + Event Type MATCH + Navigation Path MATCH = BLOCK
-        val isSystemUi = com.example.service.systemui.SystemUiDetector.isSystemUiPackage(incomingCleanPkg)
-        val candidateTargets = if (isSystemUi) {
-            savedTargets
-        } else {
-            targetsByPackage[incomingCleanPkgLower]
-        }
+        val candidateTargets = targetsByPackage[incomingCleanPkgLower]
         if (candidateTargets.isNullOrEmpty()) {
             return SafetyProtectionDecision.Allow("No saved Remember Targets for package $incomingCleanPkg")
         }
         val eventPkg = event.packageName?.toString()?.trim().orEmpty()
 
-        var lazySnapshots: List<NodeTextSnapshot>? = null
-        val getSnapshots: () -> List<NodeTextSnapshot> = {
-            if (lazySnapshots == null) {
-                lazySnapshots = extractNodeSnapshots(event)
-            }
-            lazySnapshots!!
-        }
-
         for (target in candidateTargets) {
+            // Condition 1: Package Name MATCH
             val targetPkg = target.trimmedPackageName
-            val isDirectPkgMatch = targetPkg.equals(incomingCleanPkg, ignoreCase = true) &&
+            val pkgMatches = targetPkg.equals(incomingCleanPkg, ignoreCase = true) &&
                     (eventPkg.isEmpty() || targetPkg.equals(eventPkg, ignoreCase = true))
-
-            if (!isDirectPkgMatch && !isSystemUi) continue
+            if (!pkgMatches) continue
 
             // Condition 2: Event Type MATCH (cheap integer comparison first)
             val targetEvtType = target.trimmedEventType
@@ -668,14 +558,7 @@ object RememberProtectionEngine {
             val path = target.trimmedNavigationPath
             if (path.isEmpty()) continue
 
-            val isSystemUiTargetCheck = isSystemUi && !isDirectPkgMatch
-            val isMatched = isNavigationPathMatching(
-                event = event,
-                navigationPath = path,
-                targetPackageName = targetPkg,
-                isSystemUiEvent = isSystemUiTargetCheck,
-                cachedSnapshots = getSnapshots()
-            )
+            val isMatched = isNavigationPathMatching(event, path)
             if (!isMatched) continue
 
             // All 3 universal conditions matched -> BLOCK

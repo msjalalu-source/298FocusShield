@@ -698,9 +698,6 @@ class FocusAccessibilityService : AccessibilityService() {
 
     private fun isRememberProtectionCandidate(packageName: String): Boolean {
         if (!com.example.service.safety.RememberProtectionEngine.isRememberProtectionActive(this)) return false
-        if (SystemUiDetector.isSystemUiPackage(packageName)) {
-            return com.example.service.safety.RememberProtectionEngine.hasSavedTargets(this)
-        }
         return com.example.service.safety.RememberProtectionEngine.isCandidatePackage(this, packageName)
     }
 
@@ -1041,6 +1038,9 @@ class FocusAccessibilityService : AccessibilityService() {
 
     override fun onUnbind(intent: Intent?): Boolean {
         cancelPendingVerificationCheck()
+        if (::rememberProtectionHandler.isInitialized) {
+            rememberProtectionHandler.cancelPending()
+        }
         TempInspector.cleanUp() // TEMP-INSPECT
         if (serviceInstance === this) {
             serviceInstance = null
@@ -1071,6 +1071,9 @@ class FocusAccessibilityService : AccessibilityService() {
     override fun onDestroy() {
         super.onDestroy()
         cancelPendingVerificationCheck()
+        if (::rememberProtectionHandler.isInitialized) {
+            rememberProtectionHandler.cancelPending()
+        }
         TempInspector.cleanUp() // TEMP-INSPECT
         if (serviceInstance === this) {
             serviceInstance = null

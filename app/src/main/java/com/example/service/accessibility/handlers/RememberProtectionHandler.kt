@@ -20,6 +20,16 @@ class RememberProtectionHandler(
     @Volatile private var lastEventPackage = ""
     @Volatile private var lastEventClass = ""
 
+    private val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    @Volatile private var pendingDelayedHomeRunnable: Runnable? = null
+
+    fun cancelPending() {
+        pendingDelayedHomeRunnable?.let {
+            mainHandler.removeCallbacks(it)
+            pendingDelayedHomeRunnable = null
+        }
+    }
+
     private fun isDuplicateEvent(packageName: String, event: AccessibilityEvent): Boolean {
         val now = SystemClock.elapsedRealtime()
         val type = event.eventType
@@ -46,9 +56,6 @@ class RememberProtectionHandler(
         }
         val ctx = contextProvider()
         if (!RememberProtectionEngine.isRememberProtectionActive(ctx.context)) return false
-        if (com.example.service.systemui.SystemUiDetector.isSystemUiPackage(packageName)) {
-            return RememberProtectionEngine.hasSavedTargets(ctx.context)
-        }
         return RememberProtectionEngine.isCandidatePackage(ctx.context, packageName)
     }
 
@@ -87,7 +94,18 @@ class RememberProtectionHandler(
                             ctx.performBackAction()
                         }
                         else -> {
-                            ctx.performHomeAction(packageName)
+                            ctx.performBackAction()
+                            cancelPending()
+                            val delayedHome = Runnable {
+                                pendingDelayedHomeRunnable = null
+                                try {
+                                    ctx.performHomeAction(packageName)
+                                } catch (_: Throwable) {
+                                    // ignored intentionally
+                                }
+                            }
+                            pendingDelayedHomeRunnable = delayedHome
+                            mainHandler.postDelayed(delayedHome, 150L)
                         }
                     }
                     true
