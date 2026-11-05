@@ -698,6 +698,9 @@ class FocusAccessibilityService : AccessibilityService() {
 
     private fun isRememberProtectionCandidate(packageName: String): Boolean {
         if (!com.example.service.safety.RememberProtectionEngine.isRememberProtectionActive(this)) return false
+        if (SystemUiDetector.isSystemUiPackage(packageName)) {
+            return com.example.service.safety.RememberProtectionEngine.hasSavedTargets(this)
+        }
         return com.example.service.safety.RememberProtectionEngine.isCandidatePackage(this, packageName)
     }
 

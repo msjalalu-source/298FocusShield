@@ -270,13 +270,14 @@ class AppRepository(private val appDao: AppDao, context: Context) {
                 val isSystem = (info.flags and ApplicationInfo.FLAG_SYSTEM) != 0 ||
                         (info.flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0
                 val isLaunchable = launchablePackages.contains(info.packageName)
+                val isExtraListed = EXTRA_LISTED_PACKAGES.contains(info.packageName)
 
                 // Only include launcher-visible apps (both user apps and launchable system apps)
-                // Exclude background-only packages without launcher-visible activity
-                if (launchablePackages.isNotEmpty() && !isLaunchable) {
+                // Exclude background-only packages without launcher-visible activity, except extra listed packages
+                if (launchablePackages.isNotEmpty() && !isLaunchable && !isExtraListed) {
                     continue
                 }
-                if (launchablePackages.isEmpty() && isSystem) {
+                if (launchablePackages.isEmpty() && isSystem && !isExtraListed) {
                     continue
                 }
 
@@ -910,6 +911,10 @@ class AppRepository(private val appDao: AppDao, context: Context) {
     }
 
     companion object {
+        val EXTRA_LISTED_PACKAGES: Set<String> = setOf(
+            "com.google.android.gms.supervision"
+        )
+
         val DEFAULT_BLOCKED_ITEMS: List<String> = listOf(
             "Aashiq Banaya",
             "hot",

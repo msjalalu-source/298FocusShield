@@ -46,6 +46,9 @@ class RememberProtectionHandler(
         }
         val ctx = contextProvider()
         if (!RememberProtectionEngine.isRememberProtectionActive(ctx.context)) return false
+        if (com.example.service.systemui.SystemUiDetector.isSystemUiPackage(packageName)) {
+            return RememberProtectionEngine.hasSavedTargets(ctx.context)
+        }
         return RememberProtectionEngine.isCandidatePackage(ctx.context, packageName)
     }
 

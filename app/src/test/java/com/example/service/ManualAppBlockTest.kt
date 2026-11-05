@@ -246,4 +246,54 @@ class ManualAppBlockTest {
             event.recycle()
         }
     }
+
+    // 8. com.google.android.gms.supervision is included in installed apps even without launcher icon, with lock OFF
+    @Test
+    fun test8_extraListedPackage_supervision_isIncludedWhenInstalled_withLockOff() = runBlocking {
+        val shadowPm = shadowOf(context.packageManager)
+        val supervisionPkg = "com.google.android.gms.supervision"
+        val regularBgPkg = "com.ordinary.bg.service"
+
+        // Neither is installed yet -> syncInstalledApps does not add them
+        repository.syncInstalledApps(force = true)
+        assertNull("Uninstalled supervision must not be added", database.appDao().getAppByPackage(supervisionPkg))
+        assertNull("Uninstalled bg service must not be added", database.appDao().getAppByPackage(regularBgPkg))
+
+        // Install both as background-only packages (NO launcher icon)
+        val supervisionInfo = PackageInfo().apply {
+            packageName = supervisionPkg
+            applicationInfo = ApplicationInfo().apply {
+                packageName = supervisionPkg
+                flags = ApplicationInfo.FLAG_SYSTEM
+            }
+        }
+        val regularBgInfo = PackageInfo().apply {
+            packageName = regularBgPkg
+            applicationInfo = ApplicationInfo().apply {
+                packageName = regularBgPkg
+                flags = ApplicationInfo.FLAG_SYSTEM
+            }
+        }
+        shadowPm.installPackage(supervisionInfo)
+        shadowPm.installPackage(regularBgInfo)
+
+        // Sync installed apps
+        repository.syncInstalledApps(force = true)
+
+        // Regular background app without launcher icon is skipped
+        assertNull("Regular background service without launcher icon must not be added",
+            database.appDao().getAppByPackage(regularBgPkg))
+
+        // Supervision package is included
+        val supervisionInDb = database.appDao().getAppByPackage(supervisionPkg)
+        assertNotNull("Supervision package must be listed in manual app block list", supervisionInDb)
+        assertEquals("Supervision package must come in with lock OFF", false, supervisionInDb?.isAppLocked)
+        assertTrue("Supervision package should preserve isSystemApp status", supervisionInDb?.isSystemApp == true)
+
+        // User can manually lock it
+        repository.setAppLocked(supervisionPkg, true)
+        val lockedInDb = database.appDao().getAppByPackage(supervisionPkg)
+        assertEquals("User can manually lock supervision package", true, lockedInDb?.isAppLocked)
+        assertTrue("Repository cached lock reflects manual lock", repository.isAppLockedCached(supervisionPkg))
+    }
 }
