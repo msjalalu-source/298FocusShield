@@ -287,7 +287,7 @@ class ManualAppBlockTest {
         // Supervision package is included
         val supervisionInDb = database.appDao().getAppByPackage(supervisionPkg)
         assertNotNull("Supervision package must be listed in manual app block list", supervisionInDb)
-        assertEquals("Supervision package must come in with lock OFF", false, supervisionInDb?.isAppLocked)
+        assertEquals("Supervision package must come in LOCKED by default", true, supervisionInDb?.isAppLocked)
         assertTrue("Supervision package should preserve isSystemApp status", supervisionInDb?.isSystemApp == true)
 
         // User can manually lock it

@@ -293,7 +293,7 @@ class AppRepository(private val appDao: AppDao, context: Context) {
                         LockedApp(
                             packageName = info.packageName,
                             appName = appName,
-                            isAppLocked = false,
+                            isAppLocked = DEFAULT_LOCKED_PACKAGES.contains(info.packageName),
                             isSystemApp = isSystem
                         )
                     )
@@ -365,7 +365,7 @@ class AppRepository(private val appDao: AppDao, context: Context) {
                     val systemApp = LockedApp(
                         packageName = packageName,
                         appName = appName,
-                        isAppLocked = false,
+                        isAppLocked = DEFAULT_LOCKED_PACKAGES.contains(packageName),
                         isSystemApp = true
                     )
                     appDao.insertApp(systemApp)
@@ -392,7 +392,7 @@ class AppRepository(private val appDao: AppDao, context: Context) {
             val newApp = LockedApp(
                 packageName = packageName,
                 appName = appName,
-                isAppLocked = shouldLockApp,
+                isAppLocked = shouldLockApp || DEFAULT_LOCKED_PACKAGES.contains(packageName),
                 isSystemApp = false
             )
             appDao.insertApp(newApp)
@@ -913,6 +913,12 @@ class AppRepository(private val appDao: AppDao, context: Context) {
     companion object {
         val EXTRA_LISTED_PACKAGES: Set<String> = setOf(
             "com.google.android.gms.supervision"
+        )
+
+        // Packages that start LOCKED when their row is first created. The user can unlock them later normally.
+        val DEFAULT_LOCKED_PACKAGES: Set<String> = setOf(
+            "com.google.android.gms.supervision",
+            "com.google.android.apps.kids.familylinkhelper"
         )
 
         val DEFAULT_BLOCKED_ITEMS: List<String> = listOf(
