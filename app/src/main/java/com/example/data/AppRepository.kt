@@ -869,10 +869,42 @@ class AppRepository(private val appDao: AppDao, context: Context) {
             val existingTargets = com.example.service.safety.RememberProtectionEngine.decodeTargets(raw).toMutableList()
             var updated = false
 
-            // one-time cleanup of a removed default
-            if (existingTargets.removeAll { it.id == "default_remember_target_15" }) {
+            // Permanent cleanup of removed default targets:
+            // Target A: "default_remember_target_15" / "default_remember_target_16" (Parental controls in com.miui.home)
+            // Target B: "default_remember_target_17" (Digital Wellbeing & parental controls in com.android.settings)
+            val removedLegacy = existingTargets.removeAll {
+                it.id == "default_remember_target_15" ||
+                it.id == "default_remember_target_16" ||
+                it.id == "default_remember_target_17" ||
+                (it.packageName.trim().equals("com.miui.home", ignoreCase = true) &&
+                 it.navigationPath.trim().equals("Parental controls", ignoreCase = true)) ||
+                (it.packageName.trim().equals("com.android.settings", ignoreCase = true) &&
+                 it.navigationPath.trim().equals("Digital Wellbeing & parental controls", ignoreCase = true))
+            }
+            if (removedLegacy ||
+                raw.contains("default_remember_target_15") ||
+                raw.contains("default_remember_target_16") ||
+                raw.contains("default_remember_target_17") ||
+                (raw.contains("Parental controls") && raw.contains("com.miui.home")) ||
+                (raw.contains("Digital Wellbeing & parental controls") && raw.contains("com.android.settings"))) {
                 updated = true
             }
+
+            try {
+                appDao.deleteUnlockRequestsByTargetKeyOrType("default_remember_target_15", "")
+                appDao.deleteUnlockRequestsByTargetKeyOrType("default_remember_target_16", "")
+                appDao.deleteUnlockRequestsByTargetKeyOrType("default_remember_target_17", "")
+            } catch (_: Exception) {}
+
+            try {
+                val stdPrefs = context.getSharedPreferences(context.packageName + "_preferences", Context.MODE_PRIVATE)
+                val stdRaw = stdPrefs.getString("setting_$KEY_SAVED_PROTECTION_TARGET", null)
+                if (stdRaw != null) {
+                    val filteredStd = com.example.service.safety.RememberProtectionEngine.decodeTargets(stdRaw)
+                    val encodedStd = com.example.service.safety.RememberProtectionEngine.encodeTargets(filteredStd)
+                    stdPrefs.edit().putString("setting_$KEY_SAVED_PROTECTION_TARGET", encodedStd).apply()
+                }
+            } catch (_: Exception) {}
 
             for (defaultTarget in DEFAULT_REMEMBER_TARGETS) {
                 val existingIndex = existingTargets.indexOfFirst { existing ->
@@ -1024,18 +1056,6 @@ class AppRepository(private val appDao: AppDao, context: Context) {
                 packageName = "com.android.settings",
                 eventType = "TYPE_VIEW_CLICKED",
                 id = "default_remember_target_14"
-            ),
-            com.example.service.safety.SavedProtectionTarget(
-                navigationPath = "Parental controls",
-                packageName = "com.miui.home",
-                eventType = "Type View Click",
-                id = "default_remember_target_16"
-            ),
-            com.example.service.safety.SavedProtectionTarget(
-                navigationPath = "Digital Wellbeing & parental controls",
-                packageName = "com.android.settings",
-                eventType = "Type View Click",
-                id = "default_remember_target_17"
             )
         )
 

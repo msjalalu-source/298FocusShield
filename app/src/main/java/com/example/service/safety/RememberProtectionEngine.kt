@@ -112,6 +112,15 @@ object RememberProtectionEngine {
         if (target.packageName.trim().isEmpty()) {
             return "Package name cannot be empty"
         }
+        if (target.id == "default_remember_target_15" ||
+            target.id == "default_remember_target_16" ||
+            target.id == "default_remember_target_17" ||
+            (target.packageName.trim().equals("com.miui.home", ignoreCase = true) &&
+             target.navigationPath.trim().equals("Parental controls", ignoreCase = true)) ||
+            (target.packageName.trim().equals("com.android.settings", ignoreCase = true) &&
+             target.navigationPath.trim().equals("Digital Wellbeing & parental controls", ignoreCase = true))) {
+            return "Target is permanently removed and cannot be added"
+        }
         return null
     }
 
@@ -336,12 +345,23 @@ object RememberProtectionEngine {
                     }
                 }
                 if (pkg.isNotEmpty() && navPath.isNotEmpty()) {
-                    SavedProtectionTarget(
-                        navigationPath = navPath,
-                        packageName = pkg,
-                        eventType = evtType,
-                        id = id
-                    )
+                    val isRemovedTarget = id == "default_remember_target_15" ||
+                        id == "default_remember_target_16" ||
+                        id == "default_remember_target_17" ||
+                        (pkg.equals("com.miui.home", ignoreCase = true) &&
+                         navPath.equals("Parental controls", ignoreCase = true)) ||
+                        (pkg.equals("com.android.settings", ignoreCase = true) &&
+                         navPath.equals("Digital Wellbeing & parental controls", ignoreCase = true))
+                    if (isRemovedTarget) {
+                        null
+                    } else {
+                        SavedProtectionTarget(
+                            navigationPath = navPath,
+                            packageName = pkg,
+                            eventType = evtType,
+                            id = id
+                        )
+                    }
                 } else null
             } else null
         }
@@ -368,8 +388,17 @@ object RememberProtectionEngine {
         targets: List<SavedProtectionTarget>,
         repository: AppRepository? = null
     ) {
-        updateCachedTargets(targets)
-        val encoded = encodeTargets(targets)
+        val sanitizedTargets = targets.filterNot {
+            it.id == "default_remember_target_15" ||
+            it.id == "default_remember_target_16" ||
+            it.id == "default_remember_target_17" ||
+            (it.packageName.trim().equals("com.miui.home", ignoreCase = true) &&
+             it.navigationPath.trim().equals("Parental controls", ignoreCase = true)) ||
+            (it.packageName.trim().equals("com.android.settings", ignoreCase = true) &&
+             it.navigationPath.trim().equals("Digital Wellbeing & parental controls", ignoreCase = true))
+        }
+        updateCachedTargets(sanitizedTargets)
+        val encoded = encodeTargets(sanitizedTargets)
 
         CriticalProtectionBootstrap.updateSetting(AppRepository.KEY_SAVED_PROTECTION_TARGET, encoded)
 
@@ -380,6 +409,12 @@ object RememberProtectionEngine {
         } catch (e: Exception) {
             // ignored intentionally
         }
+
+        try {
+            context.getSharedPreferences(context.packageName + "_preferences", Context.MODE_PRIVATE).edit()
+                .putString("setting_${AppRepository.KEY_SAVED_PROTECTION_TARGET}", encoded)
+                .apply()
+        } catch (_: Exception) {}
 
         val targetRepo = repository ?: try {
             AppRepository.getInstance(context)
