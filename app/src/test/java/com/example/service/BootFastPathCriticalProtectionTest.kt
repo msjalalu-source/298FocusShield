@@ -309,4 +309,73 @@ class BootFastPathCriticalProtectionTest {
         serviceController.destroy()
         assertFalse(StartupCapabilityDetector.isAccessibilityServiceAlive())
     }
+
+    /**
+     * Tests for Change 1: Fix Critical Protection False READY State
+     */
+    @Test
+    fun testCriticalProtection_ValidReadySnapshotRemainsReady() {
+        AppRepository.getDeviceProtectedPrefs(context).edit()
+            .putBoolean("snap_control_center_edit_locked", true)
+            .putString("setting_${AppRepository.KEY_CONTROL_CENTER_EDIT_LOCKED}", "true")
+            .putString("setting_${AppRepository.KEY_PROTECTION_ENABLED}", "true")
+            .apply()
+
+        CriticalProtectionBootstrap.resetForTesting()
+        val state = CriticalProtectionBootstrap.bootstrap(context)
+
+        assertEquals(com.example.service.bootstrap.CriticalReadinessState.READY, state.readinessState)
+        assertTrue(state.controlCenterProtectionReady)
+        assertTrue(state.isValid)
+        assertTrue(CriticalProtectionBootstrap.isControlCenterProtectionReady())
+        assertTrue(CriticalProtectionBootstrap.verifyAndEnsureProtection(context))
+    }
+
+    @Test
+    fun testCriticalProtection_InvalidSnapshotNotAcceptedAsReady() {
+        CriticalProtectionBootstrap.resetForTesting()
+
+        // Create an invalid state with isValid = false
+        val invalidState = com.example.service.bootstrap.CriticalProtectionState(
+            readinessState = com.example.service.bootstrap.CriticalReadinessState.READY,
+            controlCenterProtectionReady = true,
+            isValid = false
+        )
+
+        val bootstrapField = CriticalProtectionBootstrap::class.java.getDeclaredField("stateRef")
+        bootstrapField.isAccessible = true
+        @Suppress("UNCHECKED_CAST")
+        val stateRef = bootstrapField.get(CriticalProtectionBootstrap) as java.util.concurrent.atomic.AtomicReference<com.example.service.bootstrap.CriticalProtectionState>
+        stateRef.set(invalidState)
+
+        assertFalse("State with isValid=false must NOT be protection ready", CriticalProtectionBootstrap.isControlCenterProtectionReady())
+        assertFalse("State with isValid=false must NOT report lock enabled", CriticalProtectionBootstrap.isControlCenterLockEnabled())
+    }
+
+    @Test
+    fun testCriticalProtection_ExceptionDoesNotResultInFalseReadyAndTriggersRecovery() = runBlocking {
+        CriticalProtectionBootstrap.resetForTesting()
+
+        val failingContext = object : android.content.ContextWrapper(context) {
+            override fun getApplicationContext(): Context {
+                return this
+            }
+            override fun createDeviceProtectedStorageContext(): Context {
+                return this
+            }
+            override fun getSharedPreferences(name: String?, mode: Int): android.content.SharedPreferences {
+                throw IllegalStateException("Simulated storage access failure")
+            }
+        }
+
+        val state = CriticalProtectionBootstrap.bootstrap(failingContext)
+        assertNotEquals(com.example.service.bootstrap.CriticalReadinessState.READY, state.readinessState)
+        assertEquals(com.example.service.bootstrap.CriticalReadinessState.DEGRADED, state.readinessState)
+        assertFalse(state.controlCenterProtectionReady)
+        assertFalse(state.isValid)
+        assertFalse(CriticalProtectionBootstrap.isControlCenterProtectionReady())
+
+        assertFalse(CriticalProtectionBootstrap.verifyAndEnsureProtection(failingContext))
+    }
 }
+

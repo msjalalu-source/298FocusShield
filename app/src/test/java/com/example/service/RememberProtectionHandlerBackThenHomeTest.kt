@@ -151,4 +151,106 @@ class RememberProtectionHandlerBackThenHomeTest {
         shadowOf(Looper.getMainLooper()).idleFor(300L, TimeUnit.MILLISECONDS)
         assertEquals("HOME action must NOT execute after cancelPending()", 0, homeActionCount)
     }
+
+    /**
+     * Tests for Change 2: Improve Remember Protection Duplicate Event Filtering
+     */
+    @Test
+    fun testDuplicateEventFiltering_FiltersTrulyRepeatedEvents() {
+        val handlerContext = AccessibilityHandlerContext(
+            service = org.robolectric.Robolectric.buildService(FocusAccessibilityService::class.java).create().get(),
+            repositoryProvider = { null },
+            searchDetectorRouter = com.example.service.search.SearchDetectorRouter(),
+            isPackageSystemCore = { false },
+            getSetting = { null },
+            isSettingEnabled = { _, defaultVal -> defaultVal },
+            performHomeAction = { true },
+            performBackAction = { true },
+            showToast = { _, _ -> },
+            coroutineScope = CoroutineScope(Dispatchers.Unconfined)
+        )
+        val handler = RememberProtectionHandler { handlerContext }
+
+        val event1 = AccessibilityEvent.obtain(AccessibilityEvent.TYPE_VIEW_CLICKED).apply {
+            packageName = "com.android.settings"
+            className = "android.widget.Button"
+            text.add("Display")
+        }
+        val event2 = AccessibilityEvent.obtain(AccessibilityEvent.TYPE_VIEW_CLICKED).apply {
+            packageName = "com.android.settings"
+            className = "android.widget.Button"
+            text.add("Display")
+        }
+
+        // First event is not duplicate
+        assertFalse(handler.isDuplicateEvent("com.android.settings", event1))
+        // Immediate repeat of the exact same interaction within 40ms is filtered
+        assertTrue(handler.isDuplicateEvent("com.android.settings", event2))
+    }
+
+    @Test
+    fun testDuplicateEventFiltering_DoesNotFilterDistinctInteractionsOnSameWidgetClass() {
+        val handlerContext = AccessibilityHandlerContext(
+            service = org.robolectric.Robolectric.buildService(FocusAccessibilityService::class.java).create().get(),
+            repositoryProvider = { null },
+            searchDetectorRouter = com.example.service.search.SearchDetectorRouter(),
+            isPackageSystemCore = { false },
+            getSetting = { null },
+            isSettingEnabled = { _, defaultVal -> defaultVal },
+            performHomeAction = { true },
+            performBackAction = { true },
+            showToast = { _, _ -> },
+            coroutineScope = CoroutineScope(Dispatchers.Unconfined)
+        )
+        val handler = RememberProtectionHandler { handlerContext }
+
+        // Two distinct interactions occurring rapidly on the same widget class (Button)
+        val eventItemA = AccessibilityEvent.obtain(AccessibilityEvent.TYPE_VIEW_CLICKED).apply {
+            packageName = "com.android.settings"
+            className = "android.widget.Button"
+            text.add("Display")
+        }
+        val eventItemB = AccessibilityEvent.obtain(AccessibilityEvent.TYPE_VIEW_CLICKED).apply {
+            packageName = "com.android.settings"
+            className = "android.widget.Button"
+            text.add("Sound")
+        }
+
+        assertFalse(handler.isDuplicateEvent("com.android.settings", eventItemA))
+        // Distinct item on same class must NOT be filtered
+        assertFalse("Distinct button interaction must not be suppressed", handler.isDuplicateEvent("com.android.settings", eventItemB))
+    }
+
+    @Test
+    fun testDuplicateEventFiltering_HandlesMissingSourceInfoSafely() {
+        val handlerContext = AccessibilityHandlerContext(
+            service = org.robolectric.Robolectric.buildService(FocusAccessibilityService::class.java).create().get(),
+            repositoryProvider = { null },
+            searchDetectorRouter = com.example.service.search.SearchDetectorRouter(),
+            isPackageSystemCore = { false },
+            getSetting = { null },
+            isSettingEnabled = { _, defaultVal -> defaultVal },
+            performHomeAction = { true },
+            performBackAction = { true },
+            showToast = { _, _ -> },
+            coroutineScope = CoroutineScope(Dispatchers.Unconfined)
+        )
+        val handler = RememberProtectionHandler { handlerContext }
+
+        // Event without text or source node
+        val eventNoSource1 = AccessibilityEvent.obtain(AccessibilityEvent.TYPE_VIEW_CLICKED).apply {
+            packageName = "com.android.settings"
+            className = "android.view.View"
+        }
+        val eventNoSource2 = AccessibilityEvent.obtain(AccessibilityEvent.TYPE_VIEW_CLICKED).apply {
+            packageName = "com.android.settings"
+            className = "android.view.View"
+        }
+
+        // Must handle safely without throwing
+        assertFalse(handler.isDuplicateEvent("com.android.settings", eventNoSource1))
+        // Immediate repeat with identical missing info is filtered safely
+        assertTrue(handler.isDuplicateEvent("com.android.settings", eventNoSource2))
+    }
 }
+

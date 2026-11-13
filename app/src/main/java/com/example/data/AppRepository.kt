@@ -1164,9 +1164,9 @@ class AppRepository(private val appDao: AppDao, context: Context) {
                 )
             } catch (e: Exception) {
                 CriticalProtectionState(
-                    readinessState = com.example.service.bootstrap.CriticalReadinessState.READY,
+                    readinessState = com.example.service.bootstrap.CriticalReadinessState.DEGRADED,
                     controlCenterLockEnabled = false,
-                    controlCenterProtectionReady = true,
+                    controlCenterProtectionReady = false,
                     isProtectionEnabled = true,
                     isValid = false
                 )

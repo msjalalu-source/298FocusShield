@@ -48,13 +48,13 @@ object CriticalProtectionBootstrap {
     fun bootstrap(context: Context): CriticalProtectionState {
         // Fast-path: Already initialized and critical protection ready (READY)
         val existing = stateRef.get()
-        if (existing.readinessState == CriticalReadinessState.READY && existing.controlCenterProtectionReady) {
+        if (existing.readinessState == CriticalReadinessState.READY && existing.controlCenterProtectionReady && existing.isValid) {
             return existing
         }
 
         synchronized(initLock) {
             val current = stateRef.get()
-            if (current.readinessState == CriticalReadinessState.READY && current.controlCenterProtectionReady) {
+            if (current.readinessState == CriticalReadinessState.READY && current.controlCenterProtectionReady && current.isValid) {
                 return current
             }
 
@@ -70,9 +70,21 @@ object CriticalProtectionBootstrap {
                 val minimalState = AppRepository.loadMinimalCriticalSnapshot(appContext)
                 val loadFinishedTime = SystemClock.elapsedRealtime()
 
+                if (!minimalState.isValid || minimalState.readinessState != CriticalReadinessState.READY) {
+                    val fallbackState = minimalState.copy(
+                        readinessState = CriticalReadinessState.DEGRADED,
+                        controlCenterProtectionReady = false,
+                        isValid = false
+                    )
+                    stateRef.set(fallbackState)
+                    loadFullSnapshotAsync(appContext)
+                    return fallbackState
+                }
+
                 val readyState = minimalState.copy(
                     readinessState = CriticalReadinessState.READY,
-                    controlCenterProtectionReady = true
+                    controlCenterProtectionReady = true,
+                    isValid = true
                 )
                 stateRef.set(readyState)
 
@@ -87,14 +99,14 @@ object CriticalProtectionBootstrap {
                 return readyState
             } catch (e: Exception) {
                 val fallback = CriticalProtectionState(
-                    readinessState = CriticalReadinessState.READY,
+                    readinessState = CriticalReadinessState.DEGRADED,
                     controlCenterLockEnabled = false,
-                    controlCenterProtectionReady = true,
+                    controlCenterProtectionReady = false,
                     isProtectionEnabled = true,
                     isValid = false
                 )
                 stateRef.set(fallback)
-                StartupTiming.recordCriticalStateReady()
+                loadFullSnapshotAsync(appContext)
                 return fallback
             }
         }
@@ -106,10 +118,13 @@ object CriticalProtectionBootstrap {
      */
     fun verifyAndEnsureProtection(context: Context): Boolean {
         val current = stateRef.get()
-        if (current.readinessState == CriticalReadinessState.READY && current.controlCenterProtectionReady) {
+        if (current.readinessState == CriticalReadinessState.READY && current.controlCenterProtectionReady && current.isValid) {
             return true
         }
-        return bootstrap(context).controlCenterProtectionReady
+        val bootstrapped = bootstrap(context)
+        return bootstrapped.readinessState == CriticalReadinessState.READY &&
+               bootstrapped.controlCenterProtectionReady &&
+               bootstrapped.isValid
     }
 
     /**
@@ -117,10 +132,14 @@ object CriticalProtectionBootstrap {
      */
     fun markServiceConnected() {
         stateRef.updateAndGet { current ->
-            current.copy(
-                readinessState = CriticalReadinessState.READY,
-                controlCenterProtectionReady = true
-            )
+            if (current.isValid) {
+                current.copy(
+                    readinessState = CriticalReadinessState.READY,
+                    controlCenterProtectionReady = true
+                )
+            } else {
+                current
+            }
         }
     }
 
@@ -129,10 +148,14 @@ object CriticalProtectionBootstrap {
      */
     fun markEnforcementReady() {
         stateRef.updateAndGet { current ->
-            current.copy(
-                readinessState = CriticalReadinessState.READY,
-                controlCenterProtectionReady = true
-            )
+            if (current.isValid) {
+                current.copy(
+                    readinessState = CriticalReadinessState.READY,
+                    controlCenterProtectionReady = true
+                )
+            } else {
+                current
+            }
         }
     }
 
@@ -157,16 +180,19 @@ object CriticalProtectionBootstrap {
                         current.isValid) {
                         current
                     } else {
-                        current.copy(
-                            lockedApps = mergedLocked,
-                            knownApps = mergedKnown,
-                            blockedKeywords = mergedKeywords,
-                            settings = mergedSettings,
-                            schemaVersion = fullSnapshot.schemaVersion,
-                            createdAtMs = fullSnapshot.createdAtMs,
-                            isStale = fullSnapshot.isStale,
-                            isValid = true
-                        )
+                    current.copy(
+                        readinessState = CriticalReadinessState.READY,
+                        controlCenterProtectionReady = true,
+                        controlCenterLockEnabled = fullSnapshot.isControlCenterLockEnabled,
+                        lockedApps = mergedLocked,
+                        knownApps = mergedKnown,
+                        blockedKeywords = mergedKeywords,
+                        settings = mergedSettings,
+                        schemaVersion = fullSnapshot.schemaVersion,
+                        createdAtMs = fullSnapshot.createdAtMs,
+                        isStale = fullSnapshot.isStale,
+                        isValid = true
+                    )
                     }
                 }
             } catch (e: Exception) {
@@ -178,9 +204,9 @@ object CriticalProtectionBootstrap {
     val activeState: CriticalProtectionState
         get() = stateRef.get()
 
-    fun isControlCenterLockEnabled(): Boolean = activeState.controlCenterLockEnabled
+    fun isControlCenterLockEnabled(): Boolean = activeState.controlCenterLockEnabled && activeState.isValid
 
-    fun isControlCenterProtectionReady(): Boolean = activeState.controlCenterProtectionReady
+    fun isControlCenterProtectionReady(): Boolean = activeState.controlCenterProtectionReady && activeState.isValid && activeState.readinessState == CriticalReadinessState.READY
 
     fun isProtectionEnabled(): Boolean = activeState.isProtectionEnabled
 
@@ -298,6 +324,7 @@ object CriticalProtectionBootstrap {
     }
 
     fun resetForTesting() {
+        asyncScope.coroutineContext[kotlinx.coroutines.Job]?.children?.forEach { it.cancel() }
         stateRef.set(CriticalProtectionState.UNINITIALIZED)
         storageReadCount.set(0)
     }
